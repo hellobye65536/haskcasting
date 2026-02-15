@@ -1,0 +1,2 @@
+packages: *.cabal
+with-compiler: /home/boshiwang/.ghcup/ghc/9.10.3/bin/ghc
