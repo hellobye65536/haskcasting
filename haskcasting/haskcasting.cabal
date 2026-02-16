@@ -35,21 +35,3 @@ library
         containers,
         file-embed,
         HList,
-
-executable test
-    import:           common
-    main-is:          Test.hs
-    other-modules:
-        Haskcasting.Iota
-        Haskcasting.Fragment
-        Haskcasting.TH
-        Haskcasting.Patterns.Hexcasting
-        Haskcasting.Compound.Hexcasting
-    build-depends:
-        haskcasting,
-        template-haskell,
-        text,
-        bytestring,
-        containers,
-        file-embed,
-        HList,

@@ -4,6 +4,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Haskcasting.Patterns.Hexcasting where
 
@@ -24,6 +25,7 @@ import Haskcasting.Iota (
   IotaBoolean,
   IotaCast (iotaCast),
   IotaEntity,
+  IotaExec,
   IotaGreatPattern (IotaGreatPattern),
   IotaHList,
   IotaList,
@@ -724,8 +726,16 @@ $( mkIotaFrag
      [[t|Fragment '[IotaAny, IotaPattern, IotaVector] '[]|]]
  )
 
-iotaHermesGambit, iotaIrisGambit, iotaCharonsGambit :: IotaPattern
-iotaHermesGambit = [pattern| SOUTH_EAST deaqq |]
+$( mkIotaFrag
+     "HermesGambit"
+     [pattern| SOUTH_EAST deaqq |]
+     []
+ )
+
+instance HAppendFD as' bs as'bs => FragHermesGambit (IotaExec '[] as' ': bs) as'bs
+instance FragHermesGambit (IotaExec as as' ': asbs) as'bs => FragHermesGambit (IotaExec (a ': as) as' ': a ': asbs) as'bs
+
+iotaIrisGambit, iotaCharonsGambit :: IotaPattern
 iotaIrisGambit = [pattern| NORTH_WEST qwaqde |]
 iotaCharonsGambit = [pattern| SOUTH_WEST aqdee |]
 
@@ -1005,8 +1015,15 @@ $( mkIotaFrag
      [[t|forall a. Fragment '[IotaNumber, IotaList a] '[a]|]]
  )
 
-iotaThothsGambit :: IotaPattern
-iotaThothsGambit = [pattern| NORTH_EAST dadad |]
+$( mkIotaFrag
+     "ThothsGambit"
+     [pattern| NORTH_EAST dadad |]
+     []
+ )
+
+instance FragThothsGambit (IotaList a ': IotaExec (a ': as) '[] ': as) (IotaHList '[] ': as)
+instance FragThothsGambit (IotaList a ': IotaExec (a ': as) '[a'] ': as) (IotaList a' ': as)
+-- instance FragThothsGambit (IotaHList '[] ': IotaExec (a ': as) as' ': as) (IotaHList '[] ': as)
 
 $( mkIotaFrag
      "SinglesPurification"

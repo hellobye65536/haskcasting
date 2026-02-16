@@ -23,6 +23,7 @@ module Haskcasting.Iota (
   angleParse,
   IotaPattern (..),
   IotaGreatPattern (..),
+  IotaExec (..),
   IotaList (..),
   pattern IotaHNil,
   pattern IotaHCons,
@@ -31,6 +32,7 @@ module Haskcasting.Iota (
 ) where
 
 import Data.HList (HList (HCons, HNil))
+import Data.Kind (Type)
 import Data.Sequence (Seq (..))
 import Data.String (IsString)
 import Data.Text (Text)
@@ -54,7 +56,8 @@ instance Iota a => IotaTryCast a a where
 instance {-# OVERLAPPABLE #-} (Iota a, Iota b) => IotaTryCast a b where
   iotaTryCast = const Nothing
 
-data IotaAny = forall a. (Typeable a, Iota a) => IotaAny (TypeRep a) a
+data IotaAny where
+  IotaAny :: (Typeable a, Iota a) => (TypeRep a) -> a -> IotaAny
 instance Iota IotaAny where
   iotaShow (IotaAny _ a) = iotaShow a
 
@@ -160,6 +163,11 @@ instance Iota IotaGreatPattern where
       <> ", "
       <> iotaShow pat
       <> "]"
+
+newtype IotaExec as bs where
+  IotaExec :: forall (as :: [Type]) (bs :: [Type]). IotaAny -> IotaExec as bs
+instance Iota (IotaExec as bs) where
+  iotaShow (IotaExec inner) = iotaShow inner
 
 data IotaHList as = IotaHList (HList as)
 
