@@ -25,7 +25,7 @@ library
     exposed-modules:
         Haskcasting.Iota
         Haskcasting.Fragment
-        Haskcasting.Patterns.TH
+        Haskcasting.TH
         Haskcasting.Patterns.Hexcasting
     build-depends:
         template-haskell,
@@ -39,7 +39,7 @@ executable test
     other-modules:
         Haskcasting.Iota
         Haskcasting.Fragment
-        Haskcasting.Patterns.TH
+        Haskcasting.TH
         Haskcasting.Patterns.Hexcasting
     build-depends:
         haskcasting,

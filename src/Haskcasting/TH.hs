@@ -1,6 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Haskcasting.Patterns.TH (
+module Haskcasting.TH (
   angles,
   pattern,
   mkIotaFrag,

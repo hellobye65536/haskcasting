@@ -24,7 +24,7 @@ import Haskcasting.Iota (
   IotaPattern (..),
   IotaVector,
  )
-import Haskcasting.Patterns.TH (angles, mkGreatIotaFrag, mkIotaFrag, pattern)
+import Haskcasting.TH (angles, mkGreatIotaFrag, mkIotaFrag, pattern)
 
 $( mkIotaFrag
      "MindsReflection"
