@@ -3,7 +3,14 @@
 {-# LANGUAGE ImpredicativeTypes #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Haskcasting.Fragment (Fragment (..), fragmentAsList, (+.+), fragCast, fragUnsafeCast, fragEmpty) where
+module Haskcasting.Fragment (
+  Fragment (..),
+  fragmentAsList,
+  (+.+),
+  fragCast,
+  fragUnsafeCast,
+  fragEmpty,
+) where
 
 import Data.Kind (Type)
 import Data.Sequence (Seq (Empty))
