@@ -7,10 +7,18 @@
 
 module Haskcasting.Patterns.Hexcasting where
 
-import Data.HList (HAppendFD, HAppendListR, HReverse)
+import Data.ByteString.Char8 qualified as BC
+import Data.FileEmbed (embedFileRelative)
+import Data.HList (HAppendFD, HAppendListR, HReverse, Proxy (Proxy))
+import Data.Maybe (fromMaybe)
+import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
+import GHC.Natural (naturalToInteger)
+import GHC.TypeNats (KnownNat, natVal)
 import Haskcasting.Fragment (Fragment (Fragment))
 import Haskcasting.Iota (
+  Angle,
+  Direction (..),
   IotaAny,
   IotaAnyList,
   IotaBoolean,
@@ -21,8 +29,9 @@ import Haskcasting.Iota (
   IotaList,
   IotaNull,
   IotaNumber,
-  IotaPattern (..),
+  IotaPattern (IotaPattern),
   IotaVector,
+  angleParse,
  )
 import Haskcasting.TH (angles, mkGreatIotaFrag, mkIotaFrag, pattern)
 
@@ -1122,3 +1131,37 @@ instance
 instance
   (IotaBookkeepersGambit (True ': keep), FragBookkeepersGambit keep as bs) =>
   FragBookkeepersGambit (True ': keep) (a ': as) (a ': bs)
+
+precomputedNumericalReflectionSuffixes :: Seq [Angle]
+precomputedNumericalReflectionSuffixes = Seq.fromList $ [] : suffixes
+ where
+  raw = $(embedFileRelative "src/Haskcasting/Patterns/Hexcasting/precomputed_numbers.txt")
+  rawLines = filter (not . BC.null) $ map (BC.strip) $ BC.split '\n' raw
+  suffixes = map (parseAngles . BC.unpack) rawLines
+  parseAngles as = fromMaybe (error $ "invalid angles: '" <> as <> "'") $ traverse angleParse as
+
+iotaNumericalReflection :: forall n. KnownNat n => IotaPattern
+iotaNumericalReflection = IotaPattern direction $ prefix <> suffix
+ where
+  prefix = [angles| aqaa |]
+  direction = DirectionSE
+  nInt :: Int
+  nInt = fromInteger $ naturalToInteger $ natVal $ Proxy @n
+  suffix = fromMaybe err $ precomputedNumericalReflectionSuffixes Seq.!? nInt
+  err = error "number too large for numerical reflection"
+
+iotaNegativeNumericalReflection :: forall n. KnownNat n => IotaPattern
+iotaNegativeNumericalReflection = IotaPattern direction $ prefix <> suffix
+ where
+  prefix = [angles| dedd |]
+  direction = DirectionNE
+  nInt :: Int
+  nInt = fromInteger $ naturalToInteger $ natVal $ Proxy @n
+  suffix = fromMaybe err $ precomputedNumericalReflectionSuffixes Seq.!? nInt
+  err = error "number too large for numerical reflection"
+
+fragNumericalReflection :: forall n as. KnownNat n => Fragment as (IotaNumber ': as)
+fragNumericalReflection = Fragment $ Seq.singleton $ iotaCast $ iotaNumericalReflection @n
+
+fragNegativeNumericalReflection :: forall n as. KnownNat n => Fragment as (IotaNumber ': as)
+fragNegativeNumericalReflection = Fragment $ Seq.singleton $ iotaCast $ iotaNegativeNumericalReflection @n

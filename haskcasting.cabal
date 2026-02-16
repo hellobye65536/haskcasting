@@ -27,10 +27,13 @@ library
         Haskcasting.Fragment
         Haskcasting.TH
         Haskcasting.Patterns.Hexcasting
+        Haskcasting.Compound.Hexcasting
     build-depends:
         template-haskell,
         text,
+        bytestring,
         containers,
+        file-embed,
         HList,
 
 executable test
@@ -41,9 +44,12 @@ executable test
         Haskcasting.Fragment
         Haskcasting.TH
         Haskcasting.Patterns.Hexcasting
+        Haskcasting.Compound.Hexcasting
     build-depends:
         haskcasting,
         template-haskell,
         text,
+        bytestring,
         containers,
+        file-embed,
         HList,

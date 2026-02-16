@@ -13,7 +13,13 @@ import Data.List (dropWhileEnd, unfoldr)
 import Data.Maybe (fromMaybe)
 import Data.Sequence qualified as Seq
 import Haskcasting.Fragment (Fragment (Fragment))
-import Haskcasting.Iota (Angle (..), Direction (..), IotaCast (iotaCast), IotaPattern (IotaPattern), IotaGreatPattern)
+import Haskcasting.Iota (
+  IotaCast (iotaCast),
+  IotaGreatPattern,
+  IotaPattern (IotaPattern),
+  angleParse,
+  directionParse,
+ )
 import Language.Haskell.TH (
   BndrVis (BndrReq),
   Cxt,
@@ -25,6 +31,7 @@ import Language.Haskell.TH (
   TyVarBndr (PlainTV),
   Type (..),
   conT,
+  listE,
   mkName,
   newName,
   normalB,
@@ -40,43 +47,19 @@ import Language.Haskell.TH.Syntax (Lift (lift), Specificity)
 isAsciiWhitespace :: Char -> Bool
 isAsciiWhitespace c = '\9' <= c && c <= '\13' || c == ' '
 
-angleMap :: [(Char, Name)]
-angleMap =
-  [ ('w', 'AngleW)
-  , ('e', 'AngleE)
-  , ('d', 'AngleD)
-  , ('s', 'AngleS)
-  , ('a', 'AngleA)
-  , ('q', 'AngleQ)
-  ]
-
 parseAngles :: Quote m => String -> m Exp
-parseAngles xs = pure $ ListE $ concatMap go xs
+parseAngles xs = listE $ concatMap go xs
  where
   go c
     | isAsciiWhitespace c = []
-    | Just ident <- lookup (toLower c) angleMap = [ConE ident]
+    | Just ident <- angleParse $ toLower c = [lift ident]
     | otherwise = error $ "invalid char '" <> [c] <> "'"
 
-directionMap :: [(String, Name)]
-directionMap =
-  [ ("NORTH_EAST", 'DirectionNE)
-  , ("EAST", 'DirectionE)
-  , ("SOUTH_EAST", 'DirectionSE)
-  , ("SOUTH_WEST", 'DirectionSW)
-  , ("WEST", 'DirectionW)
-  , ("NORTH_WEST", 'DirectionNW)
-  ]
-
 parseDirection :: Quote m => String -> m Exp
-parseDirection x =
-  pure $
-    ConE $
-      fromMaybe (error $ "invalid direction: '" <> x' <> "'") $
-        flip lookup directionMap $
-          map toUpper x'
+parseDirection x = lift $ fromMaybe err $ directionParse $ map toUpper x'
  where
   x' = dropWhileEnd isAsciiWhitespace $ dropWhile isAsciiWhitespace x
+  err = error $ "invalid direction: '" <> x' <> "'"
 
 parsePattern :: Quote m => String -> m Exp
 parsePattern x = apply (ConE 'IotaPattern) <$> sequenceA [parseDirection dir, parseAngles ang]

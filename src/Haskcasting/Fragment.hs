@@ -1,5 +1,6 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE ImpredicativeTypes #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 module Haskcasting.Fragment (Fragment (..), fragmentAsList, (+.+), fragCast, fragUnsafeCast, fragEmpty) where

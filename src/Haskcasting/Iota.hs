@@ -17,8 +17,10 @@ module Haskcasting.Iota (
   IotaEntity (..),
   Direction (..),
   directionShow,
+  directionParse,
   Angle (..),
   angleShow,
+  angleParse,
   IotaPattern (..),
   IotaGreatPattern (..),
   IotaList (..),
@@ -30,6 +32,7 @@ module Haskcasting.Iota (
 
 import Data.HList (HList (HCons, HNil))
 import Data.Sequence (Seq (..))
+import Data.String (IsString)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Language.Haskell.TH.Syntax qualified as TH
@@ -102,6 +105,16 @@ directionShow = \case
   DirectionW -> "WEST"
   DirectionNW -> "NORTH_WEST"
 
+directionParse :: (IsString s, Eq s) => s -> Maybe Direction
+directionParse = \case
+  "NORTH_EAST" -> Just DirectionNE
+  "EAST" -> Just DirectionE
+  "SOUTH_EAST" -> Just DirectionSE
+  "SOUTH_WEST" -> Just DirectionSW
+  "WEST" -> Just DirectionW
+  "NORTH_WEST" -> Just DirectionNW
+  _ -> Nothing
+
 data Angle
   = AngleW
   | AngleE
@@ -111,22 +124,42 @@ data Angle
   | AngleQ
   deriving (Eq, Bounded, Enum, TH.Lift)
 
-angleShow :: Angle -> Text
+angleShow :: Angle -> Char
 angleShow = \case
-  AngleW -> "w"
-  AngleE -> "e"
-  AngleD -> "d"
-  AngleS -> "s"
-  AngleA -> "a"
-  AngleQ -> "q"
+  AngleW -> 'w'
+  AngleE -> 'e'
+  AngleD -> 'd'
+  AngleS -> 's'
+  AngleA -> 'a'
+  AngleQ -> 'q'
+
+angleParse :: Char -> Maybe Angle
+angleParse = \case
+  'w' -> Just AngleW
+  'e' -> Just AngleE
+  'd' -> Just AngleD
+  's' -> Just AngleS
+  'a' -> Just AngleA
+  'q' -> Just AngleQ
+  _ -> Nothing
 
 data IotaPattern = IotaPattern Direction [Angle] deriving (Eq, TH.Lift)
 instance Iota IotaPattern where
-  iotaShow (IotaPattern dir angles) = "HexPattern[" <> directionShow dir <> ", " <> foldMap angleShow angles <> "]"
+  iotaShow (IotaPattern dir angles) =
+    "HexPattern["
+      <> directionShow dir
+      <> ", "
+      <> (T.pack $ map angleShow angles)
+      <> "]"
 
 data IotaGreatPattern = IotaGreatPattern Text IotaPattern deriving (Eq, TH.Lift)
 instance Iota IotaGreatPattern where
-  iotaShow (IotaGreatPattern tag pat) = "Great[" <> tag <> ", " <> iotaShow pat <> "]"
+  iotaShow (IotaGreatPattern tag pat) =
+    "Great["
+      <> tag
+      <> ", "
+      <> iotaShow pat
+      <> "]"
 
 data IotaHList as = IotaHList (HList as)
 
