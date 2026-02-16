@@ -12,10 +12,10 @@ test1 =
     +.+ fragCompassPurificationII
     +.+ fragMindsReflection
     +.+ fragAlidadesPurification
-    +.+ fragAdditiveDistillation @'[IotaVector, IotaVector] @'[IotaVector]
-    +.+ fragCast @'[IotaVector] @'[IotaAny]
+    +.+ fragUnsafeCast @'[IotaBoolean]
 
 main :: IO ()
 main = do
   T.putStrLn $ iotaShow $ fragmentAsList test1
-  T.putStrLn $ iotaShow $ iotaBookkeepersGambit @'[True, False, True]
+
+-- T.putStrLn $ iotaShow $ iotaBookkeepersGambit @'[True, False, True]

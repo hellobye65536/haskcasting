@@ -20,6 +20,7 @@ module Haskcasting.Iota (
   Angle (..),
   angleShow,
   IotaPattern (..),
+  IotaGreatPattern (..),
   IotaList (..),
   pattern IotaHNil,
   pattern IotaHCons,
@@ -123,6 +124,10 @@ data IotaPattern = IotaPattern Direction [Angle] deriving (Eq, TH.Lift)
 instance Iota IotaPattern where
   iotaShow (IotaPattern dir angles) = "HexPattern[" <> directionShow dir <> ", " <> foldMap angleShow angles <> "]"
 
+data IotaGreatPattern = IotaGreatPattern Text IotaPattern deriving (Eq, TH.Lift)
+instance Iota IotaGreatPattern where
+  iotaShow (IotaGreatPattern tag pat) = "Great[" <> tag <> ", " <> iotaShow pat <> "]"
+
 data IotaHList as = IotaHList (HList as)
 
 {-# COMPLETE IotaHNil #-}
@@ -178,17 +183,6 @@ instance
   IotaTryCast (IotaHList as) (IotaList b)
   where
   iotaTryCast = Just . iotaCast
-
--- instance Iota b => IotaTryCast (IotaHList '[]) (IotaList b) where
---   iotaTryCast (IotaHList HNil) = Just $ IotaList Empty
--- instance
---   (IotaTryCast a b, IotaTryCast (IotaHList as) (IotaList b), IotaHListImpl as) =>
---   IotaTryCast (IotaHList (a ': as)) (IotaList b)
---   where
---   iotaTryCast (IotaHList (x `HCons` xs)) = do
---     x' <- iotaTryCast x
---     IotaList xs' <- iotaTryCast (IotaHList xs)
---     Just $ IotaList (x' :<| xs')
 
 instance Iota a => IotaTryCast (IotaList a) (IotaHList '[]) where
   iotaTryCast (IotaList Empty) = Just $ IotaHList HNil
