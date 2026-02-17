@@ -1114,6 +1114,8 @@ iotaIntrospection = [pattern| WEST qqq |]
 iotaRetrospection = [pattern| EAST eee |]
 iotaEvanition = [pattern| EAST eeedw |]
 
+-- special
+
 class IotaBookkeepersGambit keep where
   iotaBookkeepersGambit :: IotaPattern
 instance IotaBookkeepersGambit '[False] where
