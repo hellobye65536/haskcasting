@@ -48,10 +48,10 @@ class (Iota a, Iota b) => IotaCast a b where
 class (Iota a, Iota b) => IotaTryCast a b where
   iotaTryCast :: a -> Maybe b
 
-instance Iota a => IotaCast a a where
+instance {-# OVERLAPPING #-} Iota a => IotaCast a a where
   iotaCast = id
 
-instance Iota a => IotaTryCast a a where
+instance {-# OVERLAPPING #-} Iota a => IotaTryCast a a where
   iotaTryCast = Just
 instance {-# OVERLAPPABLE #-} (Iota a, Iota b) => IotaTryCast a b where
   iotaTryCast = const Nothing
@@ -64,11 +64,12 @@ instance Iota IotaAny where
 instance (Typeable a, Iota a) => IotaCast a IotaAny where
   iotaCast a = IotaAny (typeOf a) a
 instance (Typeable a, Iota a) => IotaTryCast a IotaAny where
-  iotaTryCast a = Just $ IotaAny (typeOf a) a
+  iotaTryCast a = Just $ iotaCast a
 instance (Typeable a, Iota a) => IotaTryCast IotaAny a where
-  iotaTryCast (IotaAny ty a) = case eqTypeRep ty (typeRep @a) of
-    Just HRefl -> Just a
-    _ -> Nothing
+  iotaTryCast (IotaAny ty a)
+    | Just HRefl <- eqTypeRep ty (typeRep @IotaAny) = iotaTryCast a
+    | Just HRefl <- eqTypeRep ty (typeRep @a) = Just a
+    | otherwise = Nothing
 
 data IotaNull = IotaNull deriving (Eq, Ord, Bounded, Enum)
 instance Iota IotaNull where

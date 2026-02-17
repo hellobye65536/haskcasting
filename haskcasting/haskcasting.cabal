@@ -18,6 +18,7 @@ common common
         -Wall
         -ddump-to-file
         -ddump-splices
+        -fprint-explicit-kinds
 
 library
     import:           common
@@ -25,6 +26,7 @@ library
     exposed-modules:
         Haskcasting.Iota
         Haskcasting.Fragment
+        Haskcasting.Embed
         Haskcasting.TH
         Haskcasting.Patterns.Hexcasting
         Haskcasting.Compound.Hexcasting

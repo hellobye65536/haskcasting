@@ -5,16 +5,16 @@
 
 module Haskcasting.Fragment (
   Fragment (..),
-  fragmentAsList,
   (+.+),
+  fragEmpty,
+  fragmentAsIota,
   fragCast,
   fragUnsafeCast,
-  fragEmpty,
 ) where
 
 import Data.Kind (Type)
 import Data.Sequence (Seq (Empty))
-import Haskcasting.Iota (IotaAny, IotaAnyList, IotaCast, IotaList (IotaList))
+import Haskcasting.Iota (IotaAny, IotaCast (iotaCast), IotaExec (IotaExec), IotaList (IotaList))
 
 data Fragment :: [Type] -> [Type] -> Type where
   Fragment :: Seq IotaAny -> Fragment a b
@@ -26,8 +26,8 @@ Fragment l +.+ Fragment r = Fragment (l <> r)
 fragEmpty :: Fragment '[] '[]
 fragEmpty = Fragment Empty
 
-fragmentAsList :: Fragment a b -> IotaAnyList
-fragmentAsList (Fragment xs) = IotaList xs
+fragmentAsIota :: Fragment a b -> IotaExec a b
+fragmentAsIota (Fragment xs) = IotaExec $ iotaCast $ IotaList xs
 
 class FragCast as' asbs as'bs | as' asbs -> as'bs where
   fragCast :: Fragment asbs as'bs
