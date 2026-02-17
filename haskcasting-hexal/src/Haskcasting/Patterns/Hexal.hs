@@ -411,8 +411,8 @@ $( mkIotaFrag
 $( mkIotaFrag
      "MediafyItem"
      [pattern| WEST eaqa |]
-     [ [t|Fragment '[IotaItemType] '[IotaMote]|]
-     , [t|Fragment '[IotaMote, IotaItemType] '[IotaMote]|]
+     [ [t|Fragment '[IotaEntity] '[IotaMote]|]
+     , [t|Fragment '[IotaMote, IotaEntity] '[IotaMote]|]
      ]
  )
 

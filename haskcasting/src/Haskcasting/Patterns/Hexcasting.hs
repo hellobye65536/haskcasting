@@ -345,7 +345,7 @@ $( mkIotaFrag
 $( mkIotaFrag
      "AugursPurification"
      [pattern| NORTH_EAST aw |]
-     [[t|Fragment '[IotaAny] '[IotaBoolean]|]]
+     [[t|forall a. Fragment '[a] '[IotaBoolean]|]]
  )
 
 $( mkIotaFrag

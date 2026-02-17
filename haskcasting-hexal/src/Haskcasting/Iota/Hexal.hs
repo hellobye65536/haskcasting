@@ -7,7 +7,9 @@ module Haskcasting.Iota.Hexal where
 import Data.Text (Text)
 import Haskcasting.Fragment (Fragment)
 import Haskcasting.Iota (Iota (..), IotaNumber)
+import Haskcasting.Iota.Moreiotas (IotaItemType)
 import Haskcasting.Patterns.Hexcasting (FragAdditiveDistillation, FragLengthPurification)
+import Haskcasting.Patterns.Moreiotas (FragSortersPurification)
 import Haskcasting.TH (mkFrag)
 
 newtype IotaMote = IotaMote Text deriving (Eq)
@@ -28,4 +30,9 @@ $( mkFrag
 $( mkFrag
      "LengthPurification"
      [[t|Fragment '[IotaMote] '[IotaNumber]|]]
+ )
+
+$( mkFrag
+     "SortersPurification"
+     [[t|Fragment '[IotaMote] '[IotaItemType]|]]
  )
