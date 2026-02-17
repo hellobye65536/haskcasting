@@ -16,9 +16,6 @@ common common
     build-depends:    base ^>= 4.20
     ghc-options:
         -Wall
-        -ddump-to-file
-        -ddump-splices
-        -fprint-explicit-kinds
 
 library
     import:           common
