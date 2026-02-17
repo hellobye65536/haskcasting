@@ -27,4 +27,3 @@ library
         haskcasting,
         text,
         containers,
-        HList,
