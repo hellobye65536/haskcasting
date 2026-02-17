@@ -61,11 +61,11 @@ data IotaAny where
 instance Iota IotaAny where
   iotaShow (IotaAny _ a) = iotaShow a
 
-instance (Typeable a, Iota a) => IotaCast a IotaAny where
+instance {-# OVERLAPPABLE #-} (Typeable a, Iota a) => IotaCast a IotaAny where
   iotaCast a = IotaAny (typeOf a) a
-instance (Typeable a, Iota a) => IotaTryCast a IotaAny where
+instance {-# OVERLAPPABLE #-} (Typeable a, Iota a) => IotaTryCast a IotaAny where
   iotaTryCast a = Just $ iotaCast a
-instance (Typeable a, Iota a) => IotaTryCast IotaAny a where
+instance {-# OVERLAPPABLE #-} (Typeable a, Iota a) => IotaTryCast IotaAny a where
   iotaTryCast (IotaAny ty a)
     | Just HRefl <- eqTypeRep ty (typeRep @IotaAny) = iotaTryCast a
     | Just HRefl <- eqTypeRep ty (typeRep @a) = Just a
@@ -169,6 +169,13 @@ newtype IotaExec as bs where
   IotaExec :: forall (as :: [Type]) (bs :: [Type]). IotaAny -> IotaExec as bs
 instance Iota (IotaExec as bs) where
   iotaShow (IotaExec inner) = iotaShow inner
+
+instance IotaCast (IotaExec as bs) IotaAny where
+  iotaCast (IotaExec inner) = inner
+instance IotaTryCast (IotaExec as bs) IotaAny where
+  iotaTryCast = Just . iotaCast
+instance (Typeable a, Iota a) => IotaTryCast (IotaExec as bs) a where
+  iotaTryCast = iotaTryCast . (id @IotaAny) . iotaCast
 
 data IotaHList as = IotaHList (HList as)
 
