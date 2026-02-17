@@ -5,9 +5,19 @@
 module Haskcasting.Iota.Moreiotas where
 
 import Data.Text (Text)
+import Data.Text qualified as T
 import Haskcasting.Fragment (Fragment)
 import Haskcasting.Iota (Iota (..), IotaNumber)
-import Haskcasting.Patterns.Hexcasting (FragAdditiveDistillation, FragDivisionDistillation, FragLengthPurification, FragLocatorsDistillation, FragMultiplicativeDistillation, FragPowerDistillation, FragRetrogradePurification, FragSelectionExaltation)
+import Haskcasting.Patterns.Hexcasting (
+  FragAdditiveDistillation,
+  FragDivisionDistillation,
+  FragLengthPurification,
+  FragLocatorsDistillation,
+  FragMultiplicativeDistillation,
+  FragPowerDistillation,
+  FragRetrogradePurification,
+  FragSelectionExaltation,
+ )
 import Haskcasting.TH (mkFrag)
 
 newtype IotaString = IotaString Text
@@ -20,19 +30,24 @@ instance Iota IotaMatrix where
 
 data IotaItemStack = IotaItemStack Text Int
 instance Iota IotaItemStack where
-  iotaShow _ = "<item stack>"
+  iotaShow (IotaItemStack item count) =
+    "<item stack: "
+      <> T.show count
+      <> " "
+      <> item
+      <> ">"
 
 newtype IotaItemType = IotaItemType Text
 instance Iota IotaItemType where
-  iotaShow _ = "<item type>"
+  iotaShow (IotaItemType tag) = "<item type: " <> tag <> ">"
 
 newtype IotaEntityType = IotaEntityType Text
 instance Iota IotaEntityType where
-  iotaShow _ = "<entity type>"
+  iotaShow (IotaEntityType tag) = "<entity type: " <> tag <> ">"
 
 newtype IotaIotaType = IotaIotaType Text
 instance Iota IotaIotaType where
-  iotaShow _ = "<iota type>"
+  iotaShow (IotaIotaType tag) = "<iota type: " <> tag <> ">"
 
 -- overloads
 
