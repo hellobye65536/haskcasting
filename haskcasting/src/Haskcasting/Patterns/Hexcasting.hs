@@ -1139,17 +1139,28 @@ instance IotaBookkeepersGambit (True ': as) => IotaBookkeepersGambit (True ': Tr
    where
     IotaPattern dir ang = iotaBookkeepersGambit @(True ': as)
 
-class IotaBookkeepersGambit keep => FragBookkeepersGambit keep as bs | keep as -> bs where
-  fragBookkeepersGambit :: Fragment as bs
+class IotaBookkeepersGambit keep => FragBookkeepersGambit keep where
+  type FragBookkeepersGambitResult keep (as :: [Type]) :: [Type]
+  fragBookkeepersGambit :: Fragment as (FragBookkeepersGambitResult keep as)
   fragBookkeepersGambit = Fragment $ Seq.singleton $ iotaCast $ iotaBookkeepersGambit @keep
-instance {-# OVERLAPPING #-} FragBookkeepersGambit '[False] (a ': as) as
-instance {-# OVERLAPPING #-} FragBookkeepersGambit '[True] (a ': as) (a ': as)
+instance {-# OVERLAPPING #-} FragBookkeepersGambit '[False] where
+  type FragBookkeepersGambitResult '[False] (a ': as) = as
+instance {-# OVERLAPPING #-} FragBookkeepersGambit '[True] where
+  type FragBookkeepersGambitResult '[True] (a ': as) = (a ': as)
 instance
-  (IotaBookkeepersGambit (False ': keep), FragBookkeepersGambit keep as bs) =>
-  FragBookkeepersGambit (False ': keep) (a ': as) bs
+  (IotaBookkeepersGambit (False ': b ': keep), FragBookkeepersGambit (b ': keep)) =>
+  FragBookkeepersGambit (False ': b ': keep)
+  where
+  type
+    FragBookkeepersGambitResult (False ': b ': keep) (a ': as) =
+      FragBookkeepersGambitResult (b ': keep) as
 instance
-  (IotaBookkeepersGambit (True ': keep), FragBookkeepersGambit keep as bs) =>
-  FragBookkeepersGambit (True ': keep) (a ': as) (a ': bs)
+  (IotaBookkeepersGambit (True ': b ': keep), FragBookkeepersGambit (b ': keep)) =>
+  FragBookkeepersGambit (True ': b ': keep)
+  where
+  type
+    FragBookkeepersGambitResult (True ': b ': keep) (a ': as) =
+      FragBookkeepersGambitResult (b ': keep) (a ': as)
 
 precomputedNumericalReflectionSuffixes :: Seq [Angle]
 precomputedNumericalReflectionSuffixes = Seq.fromList $ [] : suffixes
