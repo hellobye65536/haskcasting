@@ -21,9 +21,11 @@ library
     import:           common
     hs-source-dirs:   src
     exposed-modules:
+        Haskcasting.Pattern
         Haskcasting.Iota
         Haskcasting.Fragment
         Haskcasting.Embed
+        Haskcasting.Serialize.A
         Haskcasting.TH
         Haskcasting.Patterns.Hexcasting
         Haskcasting.Compound.Hexcasting

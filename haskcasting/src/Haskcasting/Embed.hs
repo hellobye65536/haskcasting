@@ -11,7 +11,6 @@ import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
 import Haskcasting.Fragment (Fragment (Fragment))
 import Haskcasting.Iota (
-  Angle,
   IotaAny,
   IotaAnyList,
   IotaCast (iotaCast),
@@ -20,7 +19,13 @@ import Haskcasting.Iota (
   IotaPattern (IotaPattern),
   IotaTryCast (iotaTryCast),
  )
-import Haskcasting.Patterns.Hexcasting (iotaConsideration, iotaEvanition, iotaIntrospection, iotaRetrospection)
+import Haskcasting.Pattern (Angle)
+import Haskcasting.Patterns.Hexcasting (
+  iotaConsideration,
+  iotaEvanition,
+  iotaIntrospection,
+  iotaRetrospection,
+ )
 
 escapedPatterns :: [[Angle]]
 escapedPatterns =

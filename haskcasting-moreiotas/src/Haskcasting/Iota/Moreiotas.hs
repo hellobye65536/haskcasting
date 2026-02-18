@@ -4,6 +4,7 @@
 
 module Haskcasting.Iota.Moreiotas where
 
+import Data.Sequence qualified as Seq
 import Data.Text (Text)
 import Data.Text qualified as T
 import Haskcasting.Fragment (Fragment)
@@ -18,11 +19,13 @@ import Haskcasting.Patterns.Hexcasting (
   FragRetrogradePurification,
   FragSelectionExaltation,
  )
+import Haskcasting.Serialize.A qualified as SA
 import Haskcasting.TH (mkFrag)
 
 newtype IotaString = IotaString Text
 instance Iota IotaString where
   iotaShow (IotaString s) = "\"" <> s <> "\""
+  iotaSerializeA (IotaString s) = pure $ Seq.singleton $ SA.String s
 
 newtype IotaMatrix = IotaMatrix [[Double]]
 instance Iota IotaMatrix where
