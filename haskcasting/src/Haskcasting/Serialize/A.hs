@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Haskcasting.Serialize.A (Inst (..), MonadSerialize (..), serialize) where
+module Haskcasting.Serialize.A (Inst (..), MonadSerialize (..), serializePattern, serialize) where
 
 import Data.Foldable (fold)
 import Data.Functor.Identity (Identity)
@@ -27,13 +27,16 @@ data Inst
   | Vector Double Double Double
   | String Text
 
+serializePattern :: Direction -> [Angle] -> [Int]
+serializePattern dir angles = NE.toList $ NE.reverse $ foldl' go (NE.singleton $ fromEnum dir) angles
+ where
+  go ls@(d NE.:| _) a = (fromEnum d + fromEnum a) `rem` 6 NE.<| ls
+
 serializeInst :: Inst -> Text
 serializeInst = \case
   Suspend tag -> "0;" <> tag
   Pattern dir angles ->
-    ("1;" <>) $ fold $ fmap T.show $ NE.reverse $ foldl' go (NE.singleton $ fromEnum dir) angles
-   where
-    go ls@(d NE.:| _) a = (fromEnum d + fromEnum a) `rem` 6 NE.<| ls
+    ("1;" <>) $ fold $ map T.show $ serializePattern dir angles
   EmptyList -> "2"
   Push -> "3"
   Null -> "4"
@@ -47,8 +50,8 @@ serializeInst = \case
       then T.show $ (round n :: Int)
       else T.show n
 
-serialize :: Seq Inst -> [Text]
-serialize = reverse . foldl' go [] . fmap serializeInst
+serialize :: (MonadSerialize m) => Seq Inst -> m [Text]
+serialize = pure . reverse . foldl' go [] . fmap serializeInst
  where
   go [] s = [s]
   go allouts@(out : outs) s =
