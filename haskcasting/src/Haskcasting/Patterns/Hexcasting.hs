@@ -3,14 +3,15 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Haskcasting.Patterns.Hexcasting where
 
 import Data.ByteString.Char8 qualified as BC
 import Data.FileEmbed (embedFileRelative)
 import Data.HList (HAppendFD, HAppendListR, HReverse, Proxy (Proxy))
+import Data.Kind (Type)
 import Data.Maybe (fromMaybe)
 import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
@@ -18,8 +19,6 @@ import GHC.Natural (naturalToInteger)
 import GHC.TypeNats (KnownNat, natVal)
 import Haskcasting.Fragment (Fragment (Fragment))
 import Haskcasting.Iota (
-  Angle,
-  Direction (..),
   IotaAny,
   IotaAnyList,
   IotaBoolean,
@@ -33,8 +32,8 @@ import Haskcasting.Iota (
   IotaNumber,
   IotaPattern (IotaPattern),
   IotaVector,
-  angleParse,
  )
+import Haskcasting.Pattern (Angle, Direction (..), angleParse)
 import Haskcasting.TH (angles, mkGreatIotaFrag, mkIotaFrag, pattern)
 
 $( mkIotaFrag
@@ -1023,6 +1022,7 @@ $( mkIotaFrag
 
 instance FragThothsGambit (IotaList a ': IotaExec (a ': as) '[] ': as) (IotaHList '[] ': as)
 instance FragThothsGambit (IotaList a ': IotaExec (a ': as) '[a'] ': as) (IotaList a' ': as)
+
 -- instance FragThothsGambit (IotaHList '[] ': IotaExec (a ': as) as' ': as) (IotaHList '[] ': as)
 
 $( mkIotaFrag

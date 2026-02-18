@@ -17,9 +17,8 @@ import Haskcasting.Iota (
   IotaCast (iotaCast),
   IotaGreatPattern,
   IotaPattern (IotaPattern),
-  angleParse,
-  directionParse,
  )
+import Haskcasting.Pattern (angleParse, directionParse)
 import Language.Haskell.TH (
   BndrVis (BndrReq),
   Cxt,
