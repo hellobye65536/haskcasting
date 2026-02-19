@@ -45,13 +45,11 @@ class (Iota a, Iota b) => IotaCast a b where
 class (Iota a, Iota b) => IotaTryCast a b where
   iotaTryCast :: a -> Maybe b
 
-instance {-# OVERLAPPING #-} Iota a => IotaCast a a where
+instance {-# OVERLAPPABLE #-} (a ~ b, Iota a, Iota b) => IotaCast a b where
   iotaCast = id
 
-instance {-# OVERLAPPING #-} Iota a => IotaTryCast a a where
+instance {-# OVERLAPPABLE #-} (a ~ b, Iota a, Iota b) => IotaTryCast a b where
   iotaTryCast = Just
-instance {-# OVERLAPPABLE #-} (Iota a, Iota b) => IotaTryCast a b where
-  iotaTryCast = const Nothing
 
 data IotaAny where
   IotaAny :: (Typeable a, Iota a) => (TypeRep a) -> a -> IotaAny
@@ -59,15 +57,17 @@ instance Iota IotaAny where
   iotaShow (IotaAny _ a) = iotaShow a
   iotaSerializeA opt (IotaAny _ a) = iotaSerializeA opt a
 
-instance {-# OVERLAPPABLE #-} (Typeable a, Iota a) => IotaCast a IotaAny where
+instance (Typeable a, Iota a) => IotaCast a IotaAny where
   iotaCast a = IotaAny (typeOf a) a
-instance {-# OVERLAPPABLE #-} (Typeable a, Iota a) => IotaTryCast a IotaAny where
+instance (Typeable a, Iota a) => IotaTryCast a IotaAny where
   iotaTryCast a = Just $ iotaCast a
-instance {-# OVERLAPPABLE #-} (Typeable a, Iota a) => IotaTryCast IotaAny a where
+instance (Typeable a, Iota a) => IotaTryCast IotaAny a where
   iotaTryCast (IotaAny ty a)
     | Just HRefl <- eqTypeRep ty (typeRep @IotaAny) = iotaTryCast a
     | Just HRefl <- eqTypeRep ty (typeRep @a) = Just a
     | otherwise = Nothing
+instance {-# OVERLAPPING #-} IotaCast IotaAny IotaAny where
+  iotaCast = id
 
 data IotaNull = IotaNull deriving (Eq, Ord, Bounded, Enum)
 instance Iota IotaNull where
@@ -118,7 +118,7 @@ instance Iota (IotaExec as bs) where
   iotaShow (IotaExec inner) = iotaShow inner
   iotaSerializeA opt (IotaExec inner) = iotaSerializeA opt inner
 
-instance IotaCast (IotaExec as bs) IotaAny where
+instance {-# OVERLAPPING #-} IotaCast (IotaExec as bs) IotaAny where
   iotaCast (IotaExec inner) = iotaCast inner
 instance IotaTryCast (IotaExec as bs) IotaAny where
   iotaTryCast = Just . iotaCast
@@ -170,8 +170,8 @@ type IotaAnyList = IotaList IotaAny
 
 instance IotaCast a b => IotaCast (IotaList a) (IotaList b) where
   iotaCast (IotaList xs) = IotaList $ fmap iotaCast xs
-instance {-# OVERLAPPING #-} IotaCast IotaAnyList IotaAnyList where
-  iotaCast = id
+instance IotaTryCast a b => IotaTryCast (IotaList a) (IotaList b) where
+  iotaTryCast (IotaList xs) = IotaList <$> traverse iotaTryCast xs
 
 instance Iota b => IotaCast (IotaHList '[]) (IotaList b) where
   iotaCast (IotaHList HNil) = IotaList Empty
