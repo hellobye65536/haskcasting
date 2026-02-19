@@ -20,7 +20,7 @@ import Haskcasting.Patterns.Hexcasting (
   FragSelectionExaltation,
  )
 import Haskcasting.Serialize.A qualified as SA
-import Haskcasting.TH (mkFrag)
+import Haskcasting.Patterns.TH (mkFrag)
 
 newtype IotaString = IotaString Text
 instance Iota IotaString where

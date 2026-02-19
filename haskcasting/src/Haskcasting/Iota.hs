@@ -30,7 +30,7 @@ import Data.Sequence (Seq (..))
 import Data.Sequence qualified as Seq
 import Data.Text (Text)
 import Data.Text qualified as T
-import Haskcasting.Pattern (Angle, Direction, angleShow, directionShow)
+import Haskcasting.Pattern (Pattern, patternShow)
 import Haskcasting.Serialize.A qualified as SA
 import Language.Haskell.TH.Syntax qualified as TH
 import Type.Reflection (TypeRep, Typeable, eqTypeRep, typeOf, typeRep, type (:~~:) (HRefl))
@@ -93,29 +93,23 @@ data IotaEntity = IotaEntity Text
 instance Iota IotaEntity where
   iotaShow (IotaEntity tag) = "<entity: " <> tag <> ">"
 
-data IotaPattern = IotaPattern Direction [Angle] deriving (Eq, TH.Lift)
+data IotaPattern = IotaPattern Pattern deriving (Eq, TH.Lift)
 instance Iota IotaPattern where
-  iotaShow (IotaPattern dir angles) =
-    "HexPattern["
-      <> directionShow dir
-      <> ", "
-      <> (T.pack $ map angleShow angles)
-      <> "]"
-  iotaSerializeA _opt (IotaPattern dir angles) =
-    Seq.singleton $ SA.Pattern dir angles
+  iotaShow (IotaPattern pat) = patternShow pat
+  iotaSerializeA _opt (IotaPattern pat) = Seq.singleton $ SA.Pattern pat
 
-data IotaGreatPattern = IotaGreatPattern Text IotaPattern deriving (Eq, TH.Lift)
+data IotaGreatPattern = IotaGreatPattern Text Pattern deriving (Eq, TH.Lift)
 instance Iota IotaGreatPattern where
   iotaShow (IotaGreatPattern tag pat) =
     "Great["
       <> tag
       <> ", "
-      <> iotaShow pat
+      <> patternShow pat
       <> "]"
   iotaSerializeA
     (SA.SerializeOptions {serOptGreatSpells = gps})
     iota@(IotaGreatPattern tag _pat) = Seq.singleton $ case HM.lookup tag gps of
-      Just gp -> uncurry SA.Pattern gp
+      Just gp -> SA.Pattern gp
       Nothing -> SA.Suspend $ iotaShow iota
 
 newtype IotaExec as bs where

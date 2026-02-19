@@ -10,6 +10,7 @@ module Haskcasting.Embed (
 import Data.Foldable (Foldable (fold))
 import Data.Maybe (fromMaybe)
 import Data.Sequence qualified as Seq
+
 import Haskcasting.Fragment (Fragment (Fragment))
 import Haskcasting.Iota (
   IotaAny,
@@ -21,7 +22,7 @@ import Haskcasting.Iota (
   IotaPattern (IotaPattern),
   IotaTryCast (iotaTryCast),
  )
-import Haskcasting.Pattern (Angle)
+import Haskcasting.Pattern (Angle, Pattern (Pattern))
 import Haskcasting.Patterns.Hexcasting (
   iotaConsideration,
   iotaEvanition,
@@ -30,13 +31,13 @@ import Haskcasting.Patterns.Hexcasting (
  )
 
 anglesIntrospection, anglesRetrospection :: [Angle]
-(IotaPattern _ anglesIntrospection) = iotaIntrospection
-(IotaPattern _ anglesRetrospection) = iotaRetrospection
+(IotaPattern (Pattern _ anglesIntrospection)) = iotaIntrospection
+(IotaPattern (Pattern _ anglesRetrospection)) = iotaRetrospection
 
 escapedPatterns :: [[Angle]]
 escapedPatterns =
   map
-    (\(IotaPattern _ angles) -> angles)
+    (\(IotaPattern (Pattern _ angles)) -> angles)
     [ iotaIntrospection
     , iotaRetrospection
     , iotaConsideration
@@ -55,7 +56,7 @@ class IotaCast a IotaAnyList => EmbedIntroRetro a where
    where
     IotaList a = iotaCast a_ :: IotaAnyList
     go acc (x Seq.:<| xs) retro = fromMaybe (go (acc Seq.|> x) xs retro) $ do
-      IotaPattern _ angles <- iotaTryCast x
+      IotaPattern (Pattern _ angles) <- iotaTryCast x
       if
         | angles == anglesIntrospection ->
             let (x', xs') = go (Seq.singleton x) xs True

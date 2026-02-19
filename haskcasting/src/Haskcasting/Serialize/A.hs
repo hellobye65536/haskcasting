@@ -1,4 +1,6 @@
+{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 
 module Haskcasting.Serialize.A (
   SerializeOptions (..),
@@ -15,49 +17,76 @@ import Data.List.NonEmpty qualified as NE
 import Data.Sequence (Seq)
 import Data.Text (Text)
 import Data.Text qualified as T
-import Haskcasting.Pattern (Angle, Direction)
+import Haskcasting.Pattern (Angle, Pattern, angles, patternAngles)
+import Haskcasting.Pattern qualified as P
 
 data SerializeOptions = SerializeOptions
-  { serOptGreatSpells :: HashMap Text (Direction, [Angle])
+  { serOptGreatSpells :: HashMap Text Pattern
+  , serOptPatternIntrinsics :: Bool
   }
 
 defaultSerializeOptions :: SerializeOptions
-defaultSerializeOptions = SerializeOptions {serOptGreatSpells = HM.empty}
+defaultSerializeOptions =
+  SerializeOptions
+    { serOptGreatSpells = HM.empty
+    , serOptPatternIntrinsics = True
+    }
 
 data Inst
   = Suspend Text
-  | Pattern Direction [Angle]
+  | Pattern Pattern
   | MergeN Int
   | Null
   | Bool Bool
   | Number Double
   | Vector Double Double Double
   | String Text
+  | PatternConsideration
+  | PatternIntrospection
+  | PatternRetrospection
 
-serializePattern :: Direction -> [Angle] -> [Int]
-serializePattern dir angles = NE.toList $ NE.reverse $ foldl' go (NE.singleton $ fromEnum dir) angles
+serializePattern :: Pattern -> [Int]
+serializePattern (P.Pattern dir ang) = NE.toList $ NE.reverse $ foldl' go (NE.singleton $ fromEnum dir) ang
  where
   go ls@(d NE.:| _) a = (fromEnum d + fromEnum a) `rem` 6 NE.<| ls
 
-serializeInst :: Inst -> Text
-serializeInst = \case
-  Suspend tag -> "0;" <> tag
-  Pattern dir angles ->
-    ("1;" <>) $ fold $ map T.show $ serializePattern dir angles
-  MergeN n -> "2;" <> T.show n
-  Null -> "3"
-  Bool b -> if b then "4" else "5"
-  Number n -> "6;" <> showNum n
-  Vector x y z -> "7;" <> showNum x <> "," <> showNum y <> "," <> showNum z
-  String s -> "8;" <> s
- where
-  showNum n =
-    if fromIntegral @Int (round n) == n
-      then T.show $ (round n :: Int)
-      else T.show n
+intrinsicPatterns :: [([Angle], Inst)]
+intrinsicPatterns =
+  [ ([angles| qqqaw |], PatternConsideration)
+  , ([angles| qqq |], PatternIntrospection)
+  , ([angles| eee |], PatternRetrospection)
+  ]
+
+serializeInst :: SerializeOptions -> Inst -> Text
+serializeInst
+  opt@SerializeOptions
+    { serOptPatternIntrinsics = patIntrs
+    } =
+    \case
+      Suspend tag -> "0;" <> tag
+      Pattern pat ->
+        if
+          | patIntrs
+          , Just inst <- lookup (patternAngles pat) intrinsicPatterns ->
+              serializeInst opt inst
+          | otherwise -> ("1;" <>) $ fold $ map T.show $ serializePattern pat
+      MergeN n -> "2;" <> T.show n
+      Null -> "3"
+      Bool b -> if b then "4" else "5"
+      Number n -> "6;" <> showNum n
+      Vector x y z -> "7;" <> showNum x <> "," <> showNum y <> "," <> showNum z
+      String s -> "8;" <> s
+      PatternConsideration -> "9"
+      PatternIntrospection -> "10"
+      PatternRetrospection -> "11"
+   where
+    showNum n =
+      if fromIntegral @Int (round n) == n
+        then T.show $ (round n :: Int)
+        else T.show n
 
 serialize :: SerializeOptions -> Seq Inst -> [Text]
-serialize _opt = reverse . foldl' go [] . fmap serializeInst
+serialize opt = reverse . foldl' go [] . fmap (serializeInst opt)
  where
   go [] s = [s]
   go allouts@(out : outs) s =

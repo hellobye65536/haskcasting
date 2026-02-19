@@ -27,7 +27,7 @@ library
         Haskcasting.Embed
         Haskcasting.Serialize
         Haskcasting.Serialize.A
-        Haskcasting.TH
+        Haskcasting.Patterns.TH
         Haskcasting.Patterns.Hexcasting
         Haskcasting.Compound.Hexcasting
     build-depends:
