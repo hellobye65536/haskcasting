@@ -1,26 +1,33 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Haskcasting.Serialize.A (Inst (..), MonadSerialize (..), serializePattern, serialize) where
+module Haskcasting.Serialize.A (
+  SerializeOptions (..),
+  defaultSerializeOptions,
+  Inst (..),
+  serializePattern,
+  serialize,
+) where
 
 import Data.Foldable (fold)
-import Data.Functor.Identity (Identity)
+import Data.HashMap.Strict (HashMap)
+import Data.HashMap.Strict qualified as HM
 import Data.List.NonEmpty qualified as NE
 import Data.Sequence (Seq)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Haskcasting.Pattern (Angle, Direction)
 
-class Monad m => MonadSerialize m where
-  findGreatPattern :: Text -> m (Maybe (Direction, [Angle]))
+data SerializeOptions = SerializeOptions
+  { serOptGreatSpells :: HashMap Text (Direction, [Angle])
+  }
 
-instance MonadSerialize Identity where
-  findGreatPattern _ = pure Nothing
+defaultSerializeOptions :: SerializeOptions
+defaultSerializeOptions = SerializeOptions {serOptGreatSpells = HM.empty}
 
 data Inst
   = Suspend Text
   | Pattern Direction [Angle]
-  | EmptyList
-  | Push
+  | MergeN Int
   | Null
   | Bool Bool
   | Number Double
@@ -37,21 +44,20 @@ serializeInst = \case
   Suspend tag -> "0;" <> tag
   Pattern dir angles ->
     ("1;" <>) $ fold $ map T.show $ serializePattern dir angles
-  EmptyList -> "2"
-  Push -> "3"
-  Null -> "4"
-  Bool b -> if b then "5" else "6"
-  Number n -> "7;" <> showNum n
-  Vector x y z -> "8;" <> showNum x <> "," <> showNum y <> "," <> showNum z
-  String s -> "9;" <> s
+  MergeN n -> "2;" <> T.show n
+  Null -> "3"
+  Bool b -> if b then "4" else "5"
+  Number n -> "6;" <> showNum n
+  Vector x y z -> "7;" <> showNum x <> "," <> showNum y <> "," <> showNum z
+  String s -> "8;" <> s
  where
   showNum n =
     if fromIntegral @Int (round n) == n
       then T.show $ (round n :: Int)
       else T.show n
 
-serialize :: (MonadSerialize m) => Seq Inst -> m [Text]
-serialize = pure . reverse . foldl' go [] . fmap serializeInst
+serialize :: SerializeOptions -> Seq Inst -> [Text]
+serialize _opt = reverse . foldl' go [] . fmap serializeInst
  where
   go [] s = [s]
   go allouts@(out : outs) s =
