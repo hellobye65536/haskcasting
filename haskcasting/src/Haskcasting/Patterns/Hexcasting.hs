@@ -803,7 +803,7 @@ $( mkIotaFrag
 $( mkIotaFrag
      "HuginnsGambit"
      [pattern| NORTH_WEST eqqwawqaaw |]
-     [[t|Fragment '[IotaAny] '[]|]]
+     [[t|forall a. Fragment '[a] '[]|]]
  )
 
 $( mkIotaFrag
@@ -1023,7 +1023,13 @@ $( mkIotaFrag
 instance FragThothsGambit (IotaList a ': IotaExec (a ': as) '[] ': as) (IotaHList '[] ': as)
 instance FragThothsGambit (IotaList a ': IotaExec (a ': as) '[a'] ': as) (IotaList a' ': as)
 
--- instance FragThothsGambit (IotaHList '[] ': IotaExec (a ': as) as' ': as) (IotaHList '[] ': as)
+type family FragThothsGambitHList a a' as where
+  FragThothsGambitHList a a' '[] = '[]
+  FragThothsGambitHList a a' (a ': as) = HAppendListR a' (FragThothsGambitHList a a' as)
+
+instance
+  FragThothsGambitHList a a' as ~ a's =>
+  FragThothsGambit (IotaHList as ': IotaExec (a ': s) a' ': s) (IotaHList a's ': s)
 
 $( mkIotaFrag
      "SinglesPurification"

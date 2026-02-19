@@ -18,11 +18,9 @@ module Haskcasting.Iota (
   IotaPattern (..),
   IotaGreatPattern (..),
   IotaExec (..),
+  IotaHList (.., IotaHNil, IotaHCons),
   IotaList (..),
-  pattern IotaHNil,
-  pattern IotaHCons,
   IotaAnyList,
-  IotaHList (..),
 ) where
 
 import Data.HList (HList (HCons, HNil), foldM)
@@ -120,17 +118,17 @@ instance Iota IotaGreatPattern where
     pure $ Seq.singleton $ fromMaybe def $ fmap (uncurry SA.Pattern) gp
 
 newtype IotaExec as bs where
-  IotaExec :: forall (as :: [Type]) (bs :: [Type]). IotaAny -> IotaExec as bs
+  IotaExec :: forall (as :: [Type]) (bs :: [Type]). IotaAnyList -> IotaExec as bs
 instance Iota (IotaExec as bs) where
   iotaShow (IotaExec inner) = iotaShow inner
   iotaSerializeA (IotaExec inner) = iotaSerializeA inner
 
 instance IotaCast (IotaExec as bs) IotaAny where
-  iotaCast (IotaExec inner) = inner
+  iotaCast (IotaExec inner) = iotaCast inner
 instance IotaTryCast (IotaExec as bs) IotaAny where
   iotaTryCast = Just . iotaCast
-instance (Typeable a, Iota a) => IotaTryCast (IotaExec as bs) a where
-  iotaTryCast = iotaTryCast . (id @IotaAny) . iotaCast
+instance (IotaTryCast IotaAnyList a) => IotaTryCast (IotaExec as bs) a where
+  iotaTryCast (IotaExec inner) = iotaTryCast inner
 
 data IotaHList as = IotaHList (HList as)
 
@@ -166,7 +164,7 @@ instance IotaHListImpl as => Iota (IotaHList as) where
   iotaShow xs = "[" <> iotaShowHList xs
   iotaSerializeA = fmap (SA.EmptyList Seq.<|) . iotaSerializeHListA
 
-newtype IotaList a = IotaList (Seq a)
+newtype IotaList a = IotaList (Seq a) deriving (Semigroup, Monoid)
 instance Iota a => Iota (IotaList a) where
   iotaShow (IotaList xs) = "[" <> go xs
    where
@@ -179,6 +177,11 @@ instance Iota a => Iota (IotaList a) where
       x' <- iotaSerializeA x
       pure $ is <> (x' Seq.|> SA.Push)
 type IotaAnyList = IotaList IotaAny
+
+instance IotaCast a b => IotaCast (IotaList a) (IotaList b) where
+  iotaCast (IotaList xs) = IotaList $ fmap iotaCast xs
+instance {-# OVERLAPPING #-} IotaCast IotaAnyList IotaAnyList where
+  iotaCast = id
 
 instance Iota b => IotaCast (IotaHList '[]) (IotaList b) where
   iotaCast (IotaHList HNil) = IotaList Empty
