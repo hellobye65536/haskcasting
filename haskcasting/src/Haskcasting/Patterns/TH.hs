@@ -1,38 +1,24 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Haskcasting.TH (
-  angles,
-  pattern,
+module Haskcasting.Patterns.TH (
   mkIotaFrag,
   mkGreatIotaFrag,
   mkFrag,
 ) where
 
-import Data.Char (toLower, toUpper)
-import Data.List (dropWhileEnd, unfoldr)
-import Data.Maybe (fromMaybe)
-import Data.Sequence qualified as Seq
-import Haskcasting.Fragment (Fragment (Fragment))
-import Haskcasting.Iota (
-  IotaCast (iotaCast),
-  IotaGreatPattern,
-  IotaPattern (IotaPattern),
- )
-import Haskcasting.Pattern (angleParse, directionParse)
 import Language.Haskell.TH (
   BndrVis (BndrReq),
   Cxt,
-  Dec (..),
-  Exp (..),
+  Dec (ClassD, InstanceD, SigD),
+  Exp,
   FunDep (FunDep),
   Name,
-  Quote,
+  Quote (..),
+  Specificity,
   TyVarBndr (PlainTV),
-  Type (..),
+  Type (AppT, ConT, ForallT, PromotedConsT, PromotedNilT, VarT),
   conT,
-  listE,
   mkName,
-  newName,
   normalB,
   sigD,
   valD,
@@ -40,44 +26,19 @@ import Language.Haskell.TH (
   varP,
   varT,
  )
-import Language.Haskell.TH.Quote (QuasiQuoter (..))
-import Language.Haskell.TH.Syntax (Lift (lift), Specificity)
+import Language.Haskell.TH.Syntax (Lift (lift))
 
-isAsciiWhitespace :: Char -> Bool
-isAsciiWhitespace c = '\9' <= c && c <= '\13' || c == ' '
+import Data.List (unfoldr)
+import Data.Sequence qualified as Seq
+import Data.Text qualified as T
 
-parseAngles :: Quote m => String -> m Exp
-parseAngles xs = listE $ concatMap go xs
- where
-  go c
-    | isAsciiWhitespace c = []
-    | Just ident <- angleParse $ toLower c = [lift ident]
-    | otherwise = error $ "invalid char '" <> [c] <> "'"
-
-parseDirection :: Quote m => String -> m Exp
-parseDirection x = lift $ fromMaybe err $ directionParse $ map toUpper x'
- where
-  x' = dropWhileEnd isAsciiWhitespace $ dropWhile isAsciiWhitespace x
-  err = error $ "invalid direction: '" <> x' <> "'"
-
-parsePattern :: Quote m => String -> m Exp
-parsePattern x = apply (ConE 'IotaPattern) <$> sequenceA [parseDirection dir, parseAngles ang]
- where
-  apply fn = foldl AppE fn
-  x' = dropWhile isAsciiWhitespace x
-  (dir, ang) = break isAsciiWhitespace x'
-
-angles :: QuasiQuoter
-angles =
-  QuasiQuoter {quoteDec = err "declaration", quoteType = err "type", quoteExp = parseAngles, quotePat = err "pattern"}
- where
-  err p = error $ "bad position: " <> p
-
-pattern :: QuasiQuoter
-pattern =
-  QuasiQuoter {quoteDec = err "declaration", quoteType = err "type", quoteExp = parsePattern, quotePat = err "pattern"}
- where
-  err p = error $ "bad position: " <> p
+import Haskcasting.Fragment (Fragment (Fragment))
+import Haskcasting.Iota (
+  IotaCast (iotaCast),
+  IotaGreatPattern (IotaGreatPattern),
+  IotaPattern (IotaPattern),
+ )
+import Haskcasting.Pattern (Pattern)
 
 infixr 6 <<>>
 (<<>>) :: (Applicative m, Monoid a) => m a -> m a -> m a
@@ -128,11 +89,11 @@ mkIotaFragImpl iotaType name pat types = iotaDecls <<>> classDecls <<>> implDecl
     pure $ [ClassD [] className vars [FunDep [tas] [tbs]] inner]
   implDecls = mkFrag name types
 
-mkIotaFrag :: Quote m => String -> IotaPattern -> [m Type] -> m [Dec]
-mkIotaFrag = mkIotaFragImpl (ConT ''IotaPattern)
+mkIotaFrag :: Quote m => String -> Pattern -> [m Type] -> m [Dec]
+mkIotaFrag name pat = mkIotaFragImpl (ConT ''IotaPattern) name (IotaPattern pat)
 
-mkGreatIotaFrag :: Quote m => String -> IotaGreatPattern -> [m Type] -> m [Dec]
-mkGreatIotaFrag = mkIotaFragImpl (ConT ''IotaGreatPattern)
+mkGreatIotaFrag :: Quote m => String -> String -> Pattern -> [m Type] -> m [Dec]
+mkGreatIotaFrag name tag pat = mkIotaFragImpl (ConT ''IotaGreatPattern) name (IotaGreatPattern (T.pack tag) pat)
 
 mkFrag :: Quote m => String -> [m Type] -> m [Dec]
 mkFrag name types = traverse go types

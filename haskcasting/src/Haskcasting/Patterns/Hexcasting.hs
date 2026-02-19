@@ -17,6 +17,7 @@ import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
 import GHC.Natural (naturalToInteger)
 import GHC.TypeNats (KnownNat, natVal)
+
 import Haskcasting.Fragment (Fragment (Fragment))
 import Haskcasting.Iota (
   IotaAny,
@@ -25,7 +26,6 @@ import Haskcasting.Iota (
   IotaCast (iotaCast),
   IotaEntity,
   IotaExec,
-  IotaGreatPattern (IotaGreatPattern),
   IotaHList,
   IotaList,
   IotaNull,
@@ -33,8 +33,8 @@ import Haskcasting.Iota (
   IotaPattern (IotaPattern),
   IotaVector,
  )
-import Haskcasting.Pattern (Angle, Direction (..), angleParse)
-import Haskcasting.TH (angles, mkGreatIotaFrag, mkIotaFrag, pattern)
+import Haskcasting.Pattern (Angle, Direction (..), Pattern (Pattern), angleParse, angles, pattern)
+import Haskcasting.Patterns.TH (mkGreatIotaFrag, mkIotaFrag)
 
 $( mkIotaFrag
      "MindsReflection"
@@ -163,10 +163,10 @@ $( mkIotaFrag
  )
 
 iotaGeminiGambit, iotaFishermansGambit, iotaFishermansGambitII, iotaSwindlersGambit :: IotaPattern
-iotaGeminiGambit = [pattern| EAST aadaadaa |]
-iotaFishermansGambit = [pattern| WEST ddad |]
-iotaFishermansGambitII = [pattern| EAST aada |]
-iotaSwindlersGambit = [pattern| SOUTH_EAST qaawdde |]
+iotaGeminiGambit = IotaPattern [pattern| EAST aadaadaa |]
+iotaFishermansGambit = IotaPattern [pattern| WEST ddad |]
+iotaFishermansGambitII = IotaPattern [pattern| EAST aada |]
+iotaSwindlersGambit = IotaPattern [pattern| SOUTH_EAST qaawdde |]
 
 $( mkIotaFrag
      "AdditiveDistillation"
@@ -673,43 +673,50 @@ $( mkIotaFrag
 
 $( mkGreatIotaFrag
      "Altiora"
-     (IotaGreatPattern "Altiora" [pattern| NORTH_WEST eawwaeawawaa |])
+     "Altiora"
+     [pattern| NORTH_WEST eawwaeawawaa |]
      [[t|Fragment '[IotaEntity] '[]|]]
  )
 
 $( mkGreatIotaFrag
      "CreateLava"
-     (IotaGreatPattern "Create Lava" [pattern| EAST eaqawqadaqd |])
+     "Create Lava"
+     [pattern| EAST eaqawqadaqd |]
      [[t|Fragment '[IotaVector] '[]|]]
  )
 
 $( mkGreatIotaFrag
      "GreaterTeleport"
-     (IotaGreatPattern "Greater Teleport" [pattern| EAST wwwqqqwwwqqeqqwwwqqwqqdqqqqqdqq |])
+     "Greater Teleport"
+     [pattern| EAST wwwqqqwwwqqeqqwwwqqwqqdqqqqqdqq |]
      [[t|Fragment '[IotaVector, IotaEntity] '[]|]]
  )
 
 $( mkGreatIotaFrag
      "SummonGreaterSentinel"
-     (IotaGreatPattern "Summon Greater Sentinel" [pattern| EAST waeawaeqqqwqwqqwq |])
+     "Summon Greater Sentinel"
+     [pattern| EAST waeawaeqqqwqwqqwq |]
      [[t|Fragment '[IotaVector] '[]|]]
  )
 
 $( mkGreatIotaFrag
      "DispelRain"
-     (IotaGreatPattern "Dispel Rain" [pattern| EAST eeewwweeewwaqqddqdqd |])
+     "Dispel Rain"
+     [pattern| EAST eeewwweeewwaqqddqdqd |]
      [[t|Fragment '[] '[]|]]
  )
 
 $( mkGreatIotaFrag
      "SummonRain"
-     (IotaGreatPattern "Summon Rain" [pattern| WEST wwweeewwweewdawdwad |])
+     "Summon Rain"
+     [pattern| WEST wwweeewwweewdawdwad |]
      [[t|Fragment '[] '[]|]]
  )
 
 $( mkGreatIotaFrag
      "FlayMind"
-     (IotaGreatPattern "Flay Mind" [pattern| NORTH_EAST qeqwqwqwqwqeqaeqeaqeqaeqaqded |])
+     "Flay Mind"
+     [pattern| NORTH_EAST qeqwqwqwqwqeqaeqeaqeqaeqaqded |]
      [[t|Fragment '[IotaVector, IotaEntity] '[]|]]
  )
 
@@ -735,8 +742,8 @@ instance HAppendFD as' bs as'bs => FragHermesGambit (IotaExec '[] as' ': bs) as'
 instance FragHermesGambit (IotaExec as as' ': asbs) as'bs => FragHermesGambit (IotaExec (a ': as) as' ': a ': asbs) as'bs
 
 iotaIrisGambit, iotaCharonsGambit :: IotaPattern
-iotaIrisGambit = [pattern| NORTH_WEST qwaqde |]
-iotaCharonsGambit = [pattern| SOUTH_WEST aqdee |]
+iotaIrisGambit = IotaPattern [pattern| NORTH_WEST qwaqde |]
+iotaCharonsGambit = IotaPattern [pattern| SOUTH_WEST aqdee |]
 
 $( mkIotaFrag
      "ScribesReflection"
@@ -1052,10 +1059,10 @@ $( mkIotaFrag
  )
 
 iotaFlocksGambit :: IotaPattern
-iotaFlocksGambit = [pattern| SOUTH_WEST ewdqdwe |]
+iotaFlocksGambit = IotaPattern [pattern| SOUTH_WEST ewdqdwe |]
 
 iotaFlocksDisintegration :: IotaPattern
-iotaFlocksDisintegration = [pattern| NORTH_WEST qwaeawq |]
+iotaFlocksDisintegration = IotaPattern [pattern| NORTH_WEST qwaeawq |]
 
 class FragFlocksDisintegration as bs | as -> bs where
   fragFlocksDisintegration :: Fragment as bs
@@ -1115,35 +1122,37 @@ $( mkIotaFrag
  )
 
 iotaConsideration, iotaIntrospection, iotaRetrospection, iotaEvanition :: IotaPattern
-iotaConsideration = [pattern| WEST qqqaw |]
-iotaIntrospection = [pattern| WEST qqq |]
-iotaRetrospection = [pattern| EAST eee |]
-iotaEvanition = [pattern| EAST eeedw |]
+iotaConsideration = IotaPattern [pattern| WEST qqqaw |]
+iotaIntrospection = IotaPattern [pattern| WEST qqq |]
+iotaRetrospection = IotaPattern [pattern| EAST eee |]
+iotaEvanition = IotaPattern [pattern| EAST eeedw |]
 
 -- special
 
 class IotaBookkeepersGambit keep where
+  patternBookkeepersGambit :: Pattern
   iotaBookkeepersGambit :: IotaPattern
+  iotaBookkeepersGambit = IotaPattern $ patternBookkeepersGambit @keep
 instance IotaBookkeepersGambit '[False] where
-  iotaBookkeepersGambit = [pattern| SOUTH_EAST a |]
+  patternBookkeepersGambit = [pattern| SOUTH_EAST a |]
 instance IotaBookkeepersGambit '[True] where
-  iotaBookkeepersGambit = [pattern| EAST |]
+  patternBookkeepersGambit = [pattern| EAST |]
 instance IotaBookkeepersGambit (False ': as) => IotaBookkeepersGambit (False ': False ': as) where
-  iotaBookkeepersGambit = IotaPattern dir $ ang <> [angles| da |]
+  patternBookkeepersGambit = Pattern dir $ ang <> [angles| da |]
    where
-    IotaPattern dir ang = iotaBookkeepersGambit @(False ': as)
+    Pattern dir ang = patternBookkeepersGambit @(False ': as)
 instance IotaBookkeepersGambit (False ': as) => IotaBookkeepersGambit (True ': False ': as) where
-  iotaBookkeepersGambit = IotaPattern dir $ ang <> [angles| e |]
+  patternBookkeepersGambit = Pattern dir $ ang <> [angles| e |]
    where
-    IotaPattern dir ang = iotaBookkeepersGambit @(False ': as)
+    Pattern dir ang = patternBookkeepersGambit @(False ': as)
 instance IotaBookkeepersGambit (True ': as) => IotaBookkeepersGambit (False ': True ': as) where
-  iotaBookkeepersGambit = IotaPattern dir $ ang <> [angles| ea |]
+  patternBookkeepersGambit = Pattern dir $ ang <> [angles| ea |]
    where
-    IotaPattern dir ang = iotaBookkeepersGambit @(True ': as)
+    Pattern dir ang = patternBookkeepersGambit @(True ': as)
 instance IotaBookkeepersGambit (True ': as) => IotaBookkeepersGambit (True ': True ': as) where
-  iotaBookkeepersGambit = IotaPattern dir $ ang <> [angles| w |]
+  patternBookkeepersGambit = Pattern dir $ ang <> [angles| w |]
    where
-    IotaPattern dir ang = iotaBookkeepersGambit @(True ': as)
+    Pattern dir ang = patternBookkeepersGambit @(True ': as)
 
 class IotaBookkeepersGambit keep => FragBookkeepersGambit keep where
   type FragBookkeepersGambitResult keep (as :: [Type]) :: [Type]
@@ -1177,7 +1186,7 @@ precomputedNumericalReflectionSuffixes = Seq.fromList $ [] : suffixes
   parseAngles as = fromMaybe (error $ "invalid angles: '" <> as <> "'") $ traverse angleParse as
 
 iotaNumericalReflection :: forall n. KnownNat n => IotaPattern
-iotaNumericalReflection = IotaPattern direction $ prefix <> suffix
+iotaNumericalReflection = IotaPattern $ Pattern direction $ prefix <> suffix
  where
   prefix = [angles| aqaa |]
   direction = DirectionSE
@@ -1187,7 +1196,7 @@ iotaNumericalReflection = IotaPattern direction $ prefix <> suffix
   err = error "number too large for numerical reflection"
 
 iotaNegativeNumericalReflection :: forall n. KnownNat n => IotaPattern
-iotaNegativeNumericalReflection = IotaPattern direction $ prefix <> suffix
+iotaNegativeNumericalReflection = IotaPattern $ Pattern direction $ prefix <> suffix
  where
   prefix = [angles| dedd |]
   direction = DirectionNE

@@ -10,7 +10,7 @@ import Haskcasting.Iota (Iota (..), IotaNumber)
 import Haskcasting.Iota.Moreiotas (IotaItemType)
 import Haskcasting.Patterns.Hexcasting (FragAdditiveDistillation, FragLengthPurification)
 import Haskcasting.Patterns.Moreiotas (FragSortersPurification)
-import Haskcasting.TH (mkFrag)
+import Haskcasting.Patterns.TH (mkFrag)
 
 newtype IotaMote = IotaMote Text deriving (Eq)
 instance Iota IotaMote where

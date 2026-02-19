@@ -12,7 +12,6 @@ import Haskcasting.Iota (
   IotaBoolean,
   IotaEntity,
   IotaExec,
-  IotaGreatPattern (IotaGreatPattern),
   IotaList,
   IotaNull,
   IotaNumber,
@@ -21,7 +20,8 @@ import Haskcasting.Iota (
  )
 import Haskcasting.Iota.Hexal (IotaGate, IotaMote)
 import Haskcasting.Iota.Moreiotas (IotaItemType)
-import Haskcasting.TH (mkGreatIotaFrag, mkIotaFrag, pattern)
+import Haskcasting.Pattern (pattern)
+import Haskcasting.Patterns.TH (mkGreatIotaFrag, mkIotaFrag)
 
 $( mkIotaFrag
      "TimekeepersReflection"
@@ -499,37 +499,29 @@ $( mkIotaFrag
 
 $( mkGreatIotaFrag
      "ConsumeWisp"
-     ( IotaGreatPattern
-         "Consume Wisp"
-         [pattern| NORTH_WEST wawqwawwwewwwewwwawqwawwwewwwewdeaweewaqaweewaawwww |]
-     )
+     "Consume Wisp"
+     [pattern| NORTH_WEST wawqwawwwewwwewwwawqwawwwewwwewdeaweewaqaweewaawwww |]
      [[t|Fragment '[IotaEntity] '[]|]]
  )
 
 $( mkGreatIotaFrag
      "BindWisp"
-     ( IotaGreatPattern
-         "Bind Wisp"
-         [pattern| SOUTH_WEST aqweewqaeaqweewqaqwww |]
-     )
+     "Bind Wisp"
+     [pattern| SOUTH_WEST aqweewqaeaqweewqaqwww |]
      [[t|Fragment '[IotaEntity] '[]|]]
  )
 
 $( mkGreatIotaFrag
      "Accelerate"
-     ( IotaGreatPattern
-         "Accelerate"
-         [pattern| SOUTH_EAST wwwdwdwwwawqqeqwqqwqeqwqq |]
-     )
+     "Accelerate"
+     [pattern| SOUTH_EAST wwwdwdwwwawqqeqwqqwqeqwqq |]
      [[t|Fragment '[IotaVector] '[]|]]
  )
 
 $( mkGreatIotaFrag
      "GatesReflection"
-     ( IotaGreatPattern
-         "Gate's Reflection"
-         [pattern| WEST qwqwqwqwqwqqeaeaeaeaeae |]
-     )
+     "Gate's Reflection"
+     [pattern| WEST qwqwqwqwqwqqeaeaeaeaeae |]
      [ [t|Fragment '[IotaNull] '[IotaGate]|]
      , [t|Fragment '[IotaVector] '[IotaGate]|]
      , [t|Fragment '[IotaEntity, IotaVector] '[IotaGate]|]

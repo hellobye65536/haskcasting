@@ -14,14 +14,14 @@ import Haskcasting.Iota (
   IotaCast (iotaCast),
   IotaEntity,
   IotaExec,
-  IotaGreatPattern (IotaGreatPattern),
   IotaList,
   IotaNumber,
-  IotaPattern,
+  IotaPattern (IotaPattern),
   IotaVector,
  )
 import Haskcasting.Iota.Hexical (IotaDye, IotaPigment)
-import Haskcasting.TH (mkGreatIotaFrag, mkIotaFrag, pattern)
+import Haskcasting.Pattern (pattern)
+import Haskcasting.Patterns.TH (mkGreatIotaFrag, mkIotaFrag)
 
 type IotaIdentifier = IotaAny
 
@@ -212,7 +212,7 @@ $( mkIotaFrag
  )
 
 iotaDioscuriGambitII :: IotaPattern
-iotaDioscuriGambitII = [pattern| EAST waadadaa |]
+iotaDioscuriGambitII = IotaPattern [pattern| EAST waadadaa |]
 
 $( mkIotaFrag
      "CongruenceDistillation"
@@ -362,13 +362,13 @@ $( mkIotaFrag
  )
 
 iotaJanusGambit :: IotaPattern
-iotaJanusGambit = [pattern| SOUTH_WEST aadee |]
+iotaJanusGambit = IotaPattern [pattern| SOUTH_WEST aadee |]
 
 fragJanusGambit :: Fragment as bs
 fragJanusGambit = Fragment $ Seq.singleton $ iotaCast iotaJanusGambit
 
 iotaAtalantasGambit :: IotaPattern
-iotaAtalantasGambit = [pattern| SOUTH_WEST aqdea |]
+iotaAtalantasGambit = IotaPattern [pattern| SOUTH_WEST aqdea |]
 
 $( mkIotaFrag
      "CastorsGambit"
@@ -383,7 +383,7 @@ $( mkIotaFrag
  )
 
 iotaSisyphusGambit :: IotaPattern
-iotaSisyphusGambit = [pattern| NORTH_EAST qaqwede |]
+iotaSisyphusGambit = IotaPattern [pattern| NORTH_EAST qaqwede |]
 
 $( mkIotaFrag
      "ThemisGambit"
@@ -1169,36 +1169,28 @@ $( mkIotaFrag
 
 $( mkGreatIotaFrag
      "GreaterBlink"
-     ( IotaGreatPattern
-         "Greater Blink"
-         [pattern| SOUTH_WEST wqawawaqwqwqawawaqw |]
-     )
+     "Greater Blink"
+     [pattern| SOUTH_WEST wqawawaqwqwqawawaqw |]
      [[t|Fragment '[IotaVector] '[]|]]
  )
 
 $( mkGreatIotaFrag
      "ConjureMesh"
-     ( IotaGreatPattern
-         "Conjure Mesh"
-         [pattern| EAST qaqqqqqqwqqqdeeweweeaeewewee |]
-     )
+     "Conjure Mesh"
+     [pattern| EAST qaqqqqqqwqqqdeeweweeaeewewee |]
      [[t|Fragment '[IotaVector] '[IotaEntity]|]]
  )
 
 $( mkGreatIotaFrag
      "WeaveMesh"
-     ( IotaGreatPattern
-         "Weave Mesh"
-         [pattern| EAST qaqqqqqqwqqqdeewewee |]
-     )
+     "Weave Mesh"
+     [pattern| EAST qaqqqqqqwqqqdeewewee |]
      [[t|Fragment '[IotaList IotaVector, IotaEntity] '[]|]]
  )
 
 $( mkGreatIotaFrag
      "TanglePurification"
-     ( IotaGreatPattern
-         "Tangle Purification"
-         [pattern| SOUTH_WEST edeeeeeweeeaqqwqwqq |]
-     )
+     "Tangle Purification"
+     [pattern| SOUTH_WEST edeeeeeweeeaqqwqwqq |]
      [[t|Fragment '[IotaEntity] '[IotaList IotaVector]|]]
  )

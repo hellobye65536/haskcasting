@@ -7,7 +7,8 @@ module Haskcasting.Patterns.Moreiotas where
 import Haskcasting.Fragment (Fragment)
 import Haskcasting.Iota (IotaAny, IotaBoolean, IotaEntity, IotaList, IotaNull, IotaNumber, IotaPattern, IotaVector)
 import Haskcasting.Iota.Moreiotas (IotaEntityType, IotaIotaType, IotaItemStack, IotaItemType, IotaMatrix, IotaString)
-import Haskcasting.TH (mkIotaFrag, pattern)
+import Haskcasting.Pattern (pattern)
+import Haskcasting.Patterns.TH (mkIotaFrag)
 
 $( mkIotaFrag
      "BlankReflection"
