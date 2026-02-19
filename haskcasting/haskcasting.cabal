@@ -35,5 +35,6 @@ library
         text,
         bytestring,
         containers,
+        unordered-containers,
         file-embed,
         HList,

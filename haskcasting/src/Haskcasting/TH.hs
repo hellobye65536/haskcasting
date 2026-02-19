@@ -93,17 +93,17 @@ parseFragType = \case
 
 parseFragApp :: Type -> ([Type], [Type])
 parseFragApp = \case
-  AppT (AppT _frag tas) tbs -> (parseTypeList tas, parseTypeList tbs)
+  _frag `AppT` tas `AppT` tbs -> (parseTypeList tas, parseTypeList tbs)
   ty -> error $ "invalid type: '" <> show ty <> "'"
 
 parseTypeList :: Type -> [Type]
 parseTypeList = unfoldr $ \case
-  AppT (AppT PromotedConsT x) xs -> Just (x, xs)
+  PromotedConsT `AppT` x `AppT` xs -> Just (x, xs)
   PromotedNilT -> Nothing
   ty -> error $ "invalid type: '" <> show ty <> "'"
 
 toTypeList :: Type -> [Type] -> Type
-toTypeList = foldr (\t ts -> (AppT (AppT PromotedConsT t) ts))
+toTypeList = foldr (\t ts -> PromotedConsT `AppT` t `AppT` ts)
 
 mkIotaFragImpl :: (Quote m, Lift p) => Type -> String -> p -> [m Type] -> m [Dec]
 mkIotaFragImpl iotaType name pat types = iotaDecls <<>> classDecls <<>> implDecls
