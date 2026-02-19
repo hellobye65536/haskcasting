@@ -55,8 +55,10 @@ deserializeSuspend
     IotaAny
 deserializeSuspend =
   iotaCast $
-    (fragmentAsList $ embedIntroRetro $ fragmentAsList $ popInst +.+ fragJanusGambit)
-      <> (IotaList $ Seq.singleton $ iotaCast iotaIrisGambit)
+    fragmentAsList $
+      embedIntroRetro (fragmentAsList $ popInst +.+ fragJanusGambit)
+        +.+ (Fragment $ Seq.singleton $ iotaCast iotaIrisGambit)
+        -- +.+ fragTutusGambit
 deserializePattern =
   iotaCast $
     fragmentAsList $
