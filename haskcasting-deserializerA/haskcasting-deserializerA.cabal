@@ -1,0 +1,28 @@
+cabal-version:      2.4
+name:               haskcasting-deserializerA
+version:            0.0.0.0
+
+synopsis:           Haskcasting deserializerA
+description:        Haskcasting deserializerA
+
+license:            MIT
+license-file:       LICENSE
+author:             hellobye65536
+maintainer:         boshwang1234@gmail.com
+
+common common
+    hs-source-dirs:   .
+    default-language: GHC2024
+    build-depends:    base ^>= 4.20
+    ghc-options:
+        -Wall
+
+executable main
+    import:           common
+    main-is:          Main.hs
+    build-depends:
+        haskcasting,
+        haskcasting-moreiotas,
+        haskcasting-hexical,
+        text,
+        containers,
