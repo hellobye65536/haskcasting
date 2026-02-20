@@ -23,6 +23,9 @@ import Haskcasting.Patterns.Hexcasting
 import Haskcasting.Patterns.Hexical
 import Haskcasting.Patterns.Moreiotas
 
+castExecIdPair :: forall a x y s. Fragment (x ': y ': s) (IotaExec a a ': IotaExec a a ': s)
+castExecIdPair = fragVeryUnsafeCast
+
 popInst :: Fragment as (IotaString ': as)
 popInst =
   fragMuninnsReflection
@@ -58,7 +61,7 @@ deserializeSuspend =
     fragmentAsList $
       embedIntroRetro (fragmentAsList $ popInst +.+ fragJanusGambit)
         +.+ (Fragment $ Seq.singleton $ iotaCast iotaIrisGambit)
-        -- +.+ fragTutusGambit
+-- +.+ fragTutusGambit
 deserializePattern =
   iotaCast $
     fragmentAsList $
@@ -151,7 +154,7 @@ bootstrap1 =
       +.+ fragAugursPurification
       +.+ fragVacantReflection
       +.+ embedIntroRetro (fragmentAsList $ fragBookkeepersGambit @'[False, False] +.+ fragJanusGambit)
-      +.+ fragUnsafeCast @'[IotaExec '[] '[], IotaExec '[] '[]]
+      +.+ castExecIdPair @'[IotaString, IotaAnyList]
       +.+ fragAugursExaltation
       +.+ fragHermesGambit
       +.+ fragInputPurification
@@ -168,11 +171,8 @@ deserializer =
     +.+ fragHuginnsGambit
     +.+ embedConsideration (fragmentAsIota $ inner)
     +.+ embedConsideration (fragmentAsIota $ quineHelper)
-    +.+ fragUnsafeCast @'[IotaExec '[] '[], IotaExec '[] '[]]
     +.+ fragGeminiDecomposition
-    +.+ fragHermesGambit
-    +.+ fragVeryUnsafeCast
-    +.+ fragEmpty
+    +.+ Fragment (Seq.singleton $ iotaCast iotaHermesGambit)
  where
   instDefs =
     IotaList $
@@ -198,7 +198,7 @@ deserializer =
       +.+ fragAugursPurification
       +.+ fragVacantReflection
       +.+ embedIntroRetro (fragmentAsList $ fragBookkeepersGambit @'[False, False] +.+ fragJanusGambit)
-      +.+ fragUnsafeCast @'[IotaExec '[] '[], IotaExec '[] '[]]
+      +.+ castExecIdPair @'[IotaString, IotaAnyList]
       +.+ fragAugursExaltation
       +.+ fragHermesGambit
       +.+ fragInputPurification

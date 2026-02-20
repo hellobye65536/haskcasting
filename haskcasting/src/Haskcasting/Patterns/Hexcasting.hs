@@ -732,17 +732,30 @@ $( mkIotaFrag
      [[t|Fragment '[IotaAny, IotaPattern, IotaVector] '[]|]]
  )
 
-$( mkIotaFrag
-     "HermesGambit"
-     [pattern| SOUTH_EAST deaqq |]
-     []
- )
+iotaHermesGambit :: IotaPattern
+iotaHermesGambit = IotaPattern [pattern| SOUTH_EAST deaqq |]
 
-instance HAppendFD as' bs as'bs => FragHermesGambit (IotaExec '[] as' ': bs) as'bs
-instance FragHermesGambit (IotaExec as as' ': asbs) as'bs => FragHermesGambit (IotaExec (a ': as) as' ': a ': asbs) as'bs
+fragHermesGambit :: Fragment (IotaExec as as' ': as) as'
+fragHermesGambit = Fragment $ Seq.singleton $ iotaCast iotaHermesGambit
 
-iotaIrisGambit, iotaCharonsGambit :: IotaPattern
+-- $( mkIotaFrag
+--      "HermesGambit"
+--      [pattern| EAST deaqq  |]
+--      []
+--  )
+
+-- instance FragHermesGambit (IotaExec as as' ': as) as'
+
+-- instance HAppendFD as' bs as'bs => FragHermesGambit (IotaExec '[] as' ': bs) as'bs
+-- instance FragHermesGambit (IotaExec as as' ': asbs) as'bs => FragHermesGambit (IotaExec (a ': as) as' ': a ': asbs) as'bs
+
+iotaIrisGambit :: IotaPattern
 iotaIrisGambit = IotaPattern [pattern| NORTH_WEST qwaqde |]
+
+fragIrisGambit :: Fragment (IotaExec (IotaExec as' bs ': as) as' ': as) as'
+fragIrisGambit = Fragment $ Seq.singleton $ iotaCast iotaIrisGambit
+
+iotaCharonsGambit :: IotaPattern
 iotaCharonsGambit = IotaPattern [pattern| SOUTH_WEST aqdee |]
 
 $( mkIotaFrag
@@ -1021,22 +1034,33 @@ $( mkIotaFrag
      [[t|forall a. Fragment '[IotaNumber, IotaList a] '[a]|]]
  )
 
-$( mkIotaFrag
-     "ThothsGambit"
-     [pattern| NORTH_EAST dadad |]
-     []
- )
-
-instance FragThothsGambit (IotaList a ': IotaExec (a ': as) '[] ': as) (IotaHList '[] ': as)
-instance FragThothsGambit (IotaList a ': IotaExec (a ': as) '[a'] ': as) (IotaList a' ': as)
+iotaThothsGambit :: IotaPattern
+iotaThothsGambit = IotaPattern [pattern| NORTH_EAST dadad |]
 
 type family FragThothsGambitHList a a' as where
   FragThothsGambitHList a a' '[] = '[]
   FragThothsGambitHList a a' (a ': as) = HAppendListR a' (FragThothsGambitHList a a' as)
 
-instance
-  FragThothsGambitHList a a' as ~ a's =>
-  FragThothsGambit (IotaHList as ': IotaExec (a ': s) a' ': s) (IotaHList a's ': s)
+type family FragThothsGambit (s :: [Type]) where
+  FragThothsGambit (IotaList a ': IotaExec (a ': s) '[] ': s) = (IotaHList '[] ': s)
+  FragThothsGambit (IotaList a ': IotaExec (a ': s) '[a'] ': s) = (IotaList a' ': s)
+  FragThothsGambit (IotaHList as ': IotaExec (a ': s) a' ': s) = (IotaHList (FragThothsGambitHList a a' as) ': s)
+
+fragThothsGambit :: Fragment s (FragThothsGambit s)
+fragThothsGambit = Fragment $ Seq.singleton $ iotaCast iotaThothsGambit
+
+-- $( mkIotaFrag
+--      "ThothsGambit"
+--      [pattern| NORTH_EAST dadad |]
+--      []
+--  )
+
+-- instance FragThothsGambit (IotaList a ': IotaExec (a ': as) '[] ': as) (IotaHList '[] ': as)
+-- instance FragThothsGambit (IotaList a ': IotaExec (a ': as) '[a'] ': as) (IotaList a' ': as)
+
+-- instance
+--   FragThothsGambitHList a a' as ~ a's =>
+--   FragThothsGambit (IotaHList as ': IotaExec (a ': s) a' ': s) (IotaHList a's ': s)
 
 $( mkIotaFrag
      "SinglesPurification"
@@ -1084,7 +1108,7 @@ $( mkIotaFrag
 $( mkIotaFrag
      "SelectionExaltation"
      [pattern| NORTH_WEST qaeaqwded |]
-     [[t|forall a. Fragment '[IotaNumber, IotaNumber, IotaList a] '[a]|]]
+     [[t|forall a. Fragment '[IotaNumber, IotaNumber, IotaList a] '[IotaList a]|]]
  )
 
 $( mkIotaFrag
