@@ -1,12 +1,18 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Haskcasting.Patterns.Hexical where
 
+import Data.Kind (Type)
+import Data.Proxy (Proxy (Proxy))
 import Data.Sequence qualified as Seq
+import GHC.Natural (naturalToInteger)
+import GHC.TypeNats (KnownNat, natVal, type (-))
 import Haskcasting.Fragment (Fragment (Fragment))
 import Haskcasting.Iota (
   IotaAny,
@@ -20,7 +26,7 @@ import Haskcasting.Iota (
   IotaVector,
  )
 import Haskcasting.Iota.Hexical (IotaDye, IotaPigment)
-import Haskcasting.Pattern (pattern)
+import Haskcasting.Pattern (Direction (DirectionSW), Pattern (Pattern), angles, pattern)
 import Haskcasting.Patterns.TH (mkGreatIotaFrag, mkIotaFrag)
 
 type IotaIdentifier = IotaAny
@@ -382,8 +388,14 @@ $( mkIotaFrag
      [[t|forall a. Fragment '[a] '[]|]]
  )
 
-iotaSisyphusGambit :: IotaPattern
-iotaSisyphusGambit = IotaPattern [pattern| NORTH_EAST qaqwede |]
+$( mkIotaFrag
+     "SisyphusGambit"
+     [pattern| NORTH_EAST qaqwede |]
+     []
+ )
+
+instance FragSisyphusGambit (IotaExec '[] '[] ': s) s
+instance FragSisyphusGambit (IotaExec as as ': s) s => FragSisyphusGambit (IotaExec (a ': as) (a ': as) ': a ': s) (a ': s)
 
 $( mkIotaFrag
      "ThemisGambit"
@@ -1194,3 +1206,19 @@ $( mkGreatIotaFrag
      [pattern| SOUTH_WEST edeeeeeweeeaqqwqwqq |]
      [[t|Fragment '[IotaEntity] '[IotaList IotaVector]|]]
  )
+
+-- special
+
+iotaSehkmetsGambit :: forall n. KnownNat n => IotaPattern
+iotaSehkmetsGambit = IotaPattern $ Pattern DirectionSW $ take (nInt + 5) $ cycle baseAngles
+ where
+  baseAngles = [angles| qaqdd |]
+  nInt :: Int
+  nInt = fromInteger $ naturalToInteger $ natVal $ Proxy @n
+
+type family FragSehkmetsGambit n (as :: [Type]) where
+  FragSehkmetsGambit 0 as = '[]
+  FragSehkmetsGambit n (a ': as) = a ': (FragSehkmetsGambit (n - 1) as)
+
+fragSehkmetsGambit :: forall n as. KnownNat n => Fragment as (FragSehkmetsGambit n as)
+fragSehkmetsGambit = Fragment $ Seq.singleton $ iotaCast $ iotaSehkmetsGambit @n
