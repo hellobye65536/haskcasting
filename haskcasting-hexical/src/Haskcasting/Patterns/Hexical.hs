@@ -388,14 +388,15 @@ $( mkIotaFrag
      [[t|forall a. Fragment '[a] '[]|]]
  )
 
-$( mkIotaFrag
-     "SisyphusGambit"
-     [pattern| NORTH_EAST qaqwede |]
-     []
- )
+iotaSisyphusGambit :: IotaPattern
+iotaSisyphusGambit = IotaPattern [pattern| NORTH_EAST qaqwede |]
 
-instance FragSisyphusGambit (IotaExec '[] '[] ': s) s
-instance FragSisyphusGambit (IotaExec as as ': s) s => FragSisyphusGambit (IotaExec (a ': as) (a ': as) ': a ': s) (a ': s)
+type family FragSisyphusGambit (as :: [Type]) (s :: [Type]) where
+  FragSisyphusGambit '[] s = s
+  FragSisyphusGambit (a ': as) (a ': s) = FragSisyphusGambit as s
+
+fragSisyphusGambit :: Fragment (IotaExec as as ': s) (FragSisyphusGambit as s)
+fragSisyphusGambit = Fragment $ Seq.singleton $ iotaCast iotaSisyphusGambit
 
 $( mkIotaFrag
      "ThemisGambit"
