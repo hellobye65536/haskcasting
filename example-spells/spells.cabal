@@ -1,0 +1,31 @@
+cabal-version:      2.4
+name:               example-spells
+version:            0.0.0.0
+
+synopsis:           Example spells for Haskcasting
+description:        Example spells for Haskcasting
+
+license:            MIT
+license-file:       LICENSE
+author:             hellobye65536
+maintainer:         boshwang1234@gmail.com
+
+common common
+    hs-source-dirs:   src
+    default-language: GHC2024
+    build-depends:
+        base ^>= 4.20,
+        text,
+        containers,
+        unordered-containers,
+        haskcasting,
+    ghc-options:
+        -Wall
+
+executable ex1
+    import:           common
+    main-is:          Ex1.hs
+
+executable ex2
+    import:           common
+    main-is:          Ex2.hs
