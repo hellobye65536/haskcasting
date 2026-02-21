@@ -1,0 +1,28 @@
+cabal-version:      2.4
+name:               haskcasting-hexcassettes
+version:            0.1.0.0
+
+synopsis:           Hexical support library for Haskcasting
+description:        Hexical support library for Haskcasting
+
+license:            MIT
+license-file:       LICENSE
+author:             hellobye65536
+maintainer:         boshwang1234@gmail.com
+
+common common
+    hs-source-dirs:   src
+    default-language: GHC2024
+    build-depends:    base ^>= 4.20
+    ghc-options:
+        -Wall
+
+library
+    import:           common
+    hs-source-dirs:   src
+    exposed-modules:
+        Haskcasting.Patterns.Hexcassettes
+    build-depends:
+        haskcasting,
+        text,
+        containers,

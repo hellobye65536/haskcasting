@@ -3,7 +3,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Haskcasting.Compound.Hexcasting (dupN, mergeTopN) where
+module Haskcasting.Compound.Hexcasting (dupN, mergeTopN, hlistNth) where
 
 import Data.Sequence qualified as Seq
 import GHC.TypeNats (KnownNat, type (-))
@@ -38,4 +38,16 @@ mergeTopN =
     Seq.fromList
       [ iotaCast $ iotaNumericalReflection @n
       , iotaCast $ iotaFlocksGambit
+      ]
+
+type family HListNth n as where
+  HListNth 0 (a ': as) = a
+  HListNth n (a ': as) = HListNth (n - 1) as
+
+hlistNth :: forall n as s. KnownNat n => Fragment (IotaHList as ': s) (HListNth n as ': s)
+hlistNth =
+  Fragment $
+    Seq.fromList
+      [ iotaCast $ iotaNumericalReflection @n
+      , iotaCast $ iotaSelectionDistillation
       ]
