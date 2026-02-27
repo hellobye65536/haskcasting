@@ -120,6 +120,8 @@ instance Iota (IotaExec as bs) where
 
 instance {-# OVERLAPPING #-} IotaCast (IotaExec as bs) IotaAny where
   iotaCast (IotaExec inner) = iotaCast inner
+instance IotaCast (IotaExec as bs) IotaAnyList where
+  iotaCast (IotaExec inner) = inner
 instance IotaTryCast (IotaExec as bs) IotaAny where
   iotaTryCast = Just . iotaCast
 instance IotaTryCast IotaAnyList a => IotaTryCast (IotaExec as bs) a where

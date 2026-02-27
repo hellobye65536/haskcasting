@@ -10,7 +10,6 @@ import Haskcasting.Embed (embedConsideration, embedIntroRetro)
 import Haskcasting.Fragment
 import Haskcasting.Iota
 import Haskcasting.Iota.Moreiotas (IotaString)
-import Haskcasting.Pattern (pattern)
 import Haskcasting.Serialize (serializeA)
 import Haskcasting.Serialize.A (SerializeOptions (..), defaultSerializeOptions, serializePattern)
 
@@ -36,15 +35,7 @@ popInst =
 
 embedParseNum :: Fragment as (IotaExec (IotaString : s) '[IotaNumber] : as)
 embedParseNum =
-  ( embedIntroRetro $
-      IotaList $
-        Seq.fromList
-          [ -- hexical sekhmet's gambit 1
-            IotaPattern [pattern| SOUTH_WEST qaqddq |]
-          , iotaInputPurification
-          ]
-  )
-    +.+ fragUnsafeCast @'[IotaExec (IotaString ': _) '[IotaNumber]]
+  embedIntroRetro $ fragAsIota $ fragSehkmetsGambit @1 +.+ fragInputPurification
 
 deserializeSuspend
   , deserializePattern
@@ -58,13 +49,12 @@ deserializeSuspend
     IotaAny
 deserializeSuspend =
   iotaCast $
-    fragmentAsList $
-      embedIntroRetro (fragmentAsList $ popInst +.+ fragJanusGambit)
-        +.+ (Fragment $ Seq.singleton $ iotaCast iotaIrisGambit)
--- +.+ fragTutusGambit
+    fragAsList $
+      embedIntroRetro (fragAsIota $ popInst +.+ fragJanusGambit)
+        +.+ fragIrisGambit
 deserializePattern =
   iotaCast $
-    fragmentAsList $
+    fragAsList $
       embedParseNum
         +.+ popInst
         +.+ fragBlankReflection
@@ -77,15 +67,17 @@ deserializePattern =
         +.+ fragChirographersPurification
 deserializeMergeN =
   iotaCast $
-    (fragmentAsList $ popInst +.+ fragInputPurification)
-      <> IotaList (Seq.singleton $ iotaCast iotaFlocksGambit)
+    fragAsList $
+      popInst
+        +.+ fragInputPurification
+        +.+ fragSingleton iotaFlocksGambit
 deserializeNull = iotaCast iotaNullaryReflection
 deserializeTrue = iotaCast iotaTrueReflection
 deserializeFalse = iotaCast iotaFalseReflection
-deserializeNumber = iotaCast $ fragmentAsList $ popInst +.+ fragInputPurification
+deserializeNumber = iotaCast $ fragAsList $ popInst +.+ fragInputPurification
 deserializeVector =
   iotaCast $
-    fragmentAsList $
+    fragAsList $
       embedParseNum
         +.+ popInst
         +.+ fragCommaReflection
@@ -94,10 +86,10 @@ deserializeVector =
         +.+ fragThothsGambit @'[_, IotaExec '[IotaString] _]
         +.+ fragFlocksDisintegration
         +.+ fragVectorExaltation
-deserializeString = iotaCast $ fragmentAsList $ popInst
+deserializeString = iotaCast $ fragAsList $ popInst
 
 deserializeIntrinsic :: IotaPattern -> IotaAny
-deserializeIntrinsic iota = iotaCast $ fragmentAsList $ embedConsideration iota
+deserializeIntrinsic iota = iotaCast $ fragAsList $ embedConsideration iota
 
 serializeBootstrap0 :: IotaList IotaPattern -> Text
 serializeBootstrap0 (IotaList pats) = T.intercalate "," $ map inner $ toList pats
@@ -109,8 +101,7 @@ bootstrap0 =
   fragAssertStack @'[IotaString]
     +.+ fragCommaReflection
     +.+ fragSeparationDistillation
-    +.+ embedIntroRetro (fragmentAsList parsePattern)
-    +.+ fragUnsafeCast @'[IotaExec '[IotaString] '[IotaPattern]]
+    +.+ embedIntroRetro (fragAsIota parsePattern)
     +.+ fragJestersGambit
     +.+ fragThothsGambit
  where
@@ -122,8 +113,7 @@ bootstrap0 =
       +.+ fragBookkeepersGambit @'[False]
       +.+ fragDerivationDecomposition
       +.+ fragBookkeepersGambit @'[False]
-      +.+ embedIntroRetro (fragmentAsList (fragInputPurification :: Fragment '[IotaString] '[IotaNumber]))
-      +.+ fragUnsafeCast @'[IotaExec '[IotaString] '[IotaNumber]]
+      +.+ embedIntroRetro (fragAsIota (fragInputPurification :: Fragment '[IotaString] '[IotaNumber]))
       +.+ fragJestersGambit
       +.+ fragThothsGambit
       +.+ fragChirographersPurification
@@ -135,8 +125,8 @@ bootstrap1 =
     +.+ fragUnsafeCast @'[IotaString]
     +.+ fragSeparationDistillation
     +.+ fragHuginnsGambit
-    +.+ embedIntroRetro (fragmentAsList $ inner)
-    +.+ Fragment (Seq.singleton $ iotaCast iotaSisyphusGambit)
+    +.+ embedIntroRetro (fragAsIota inner)
+    +.+ fragSisyphusGambit
     +.+ fragVeryUnsafeCast
     +.+ fragEmpty
  where
@@ -153,7 +143,7 @@ bootstrap1 =
       +.+ fragGeminiDecomposition
       +.+ fragAugursPurification
       +.+ fragVacantReflection
-      +.+ embedIntroRetro (fragmentAsList $ fragBookkeepersGambit @'[False, False] +.+ fragJanusGambit)
+      +.+ embedIntroRetro (fragAsList $ fragBookkeepersGambit @'[False, False] +.+ fragJanusGambit)
       +.+ castExecIdPair @'[IotaString, IotaAnyList]
       +.+ fragAugursExaltation
       +.+ fragHermesGambit
@@ -169,10 +159,10 @@ deserializer =
     +.+ fragUnsafeCast @'[IotaString]
     +.+ fragSeparationDistillation
     +.+ fragHuginnsGambit
-    +.+ embedConsideration (fragmentAsIota $ inner)
-    +.+ embedConsideration (fragmentAsIota $ quineHelper)
+    +.+ embedConsideration (fragAsIota $ inner)
+    +.+ embedConsideration (fragAsIota $ quineHelper)
     +.+ fragGeminiDecomposition
-    +.+ Fragment (Seq.singleton $ iotaCast iotaHermesGambit)
+    +.+ fragSingleton iotaHermesGambit
  where
   instDefs =
     IotaList $
@@ -197,7 +187,7 @@ deserializer =
       +.+ fragGeminiDecomposition
       +.+ fragAugursPurification
       +.+ fragVacantReflection
-      +.+ embedIntroRetro (fragmentAsList $ fragBookkeepersGambit @'[False, False] +.+ fragJanusGambit)
+      +.+ embedIntroRetro (fragAsList $ fragBookkeepersGambit @'[False, False] +.+ fragJanusGambit)
       +.+ castExecIdPair @'[IotaString, IotaAnyList]
       +.+ fragAugursExaltation
       +.+ fragHermesGambit
@@ -237,18 +227,18 @@ deserializer =
 main :: IO ()
 main = do
   T.putStrLn "\n==== bootstrap0 ===="
-  T.putStrLn $ iotaShow $ fragmentAsList bootstrap0
+  T.putStrLn $ iotaShow $ fragAsList bootstrap0
 
   T.putStrLn "\n==== bootstrap1 ===="
   T.putStrLn $
     serializeBootstrap0 $
       fromJust $
         iotaTryCast $
-          fragmentAsList $
+          fragAsList $
             bootstrap1
 
   T.putStrLn "\n==== deserializer ===="
   mapM_ T.putStrLn $
     serializeA defaultSerializeOptions {serOptPatternIntrinsics = False} $
-      fragmentAsIota $
+      fragAsIota $
         deserializer

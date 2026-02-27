@@ -10,20 +10,16 @@ module Haskcasting.Patterns.Hexcasting where
 
 import Data.ByteString.Char8 qualified as BC
 import Data.FileEmbed (embedFileRelative)
-import Data.HList (HAppendFD, HAppendListR, HReverse, Proxy (Proxy))
+import Data.HList (HAppendFD, HAppendListR, HReverse)
 import Data.Kind (Type)
 import Data.Maybe (fromMaybe)
 import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
-import GHC.Natural (naturalToInteger)
-import GHC.TypeNats (KnownNat, natVal)
-
-import Haskcasting.Fragment (Fragment (Fragment))
+import Haskcasting.Fragment (Fragment, fragSingleton)
 import Haskcasting.Iota (
   IotaAny,
   IotaAnyList,
   IotaBoolean,
-  IotaCast (iotaCast),
   IotaEntity,
   IotaExec,
   IotaHList,
@@ -33,7 +29,7 @@ import Haskcasting.Iota (
   IotaPattern (IotaPattern),
   IotaVector,
  )
-import Haskcasting.Pattern (Angle, Direction (..), Pattern (Pattern), angleParse, angles, pattern)
+import Haskcasting.Pattern (Angle, Pattern (Pattern), angleParse, angles, pattern)
 import Haskcasting.Patterns.TH (mkGreatIotaFrag, mkIotaFrag)
 
 $( mkIotaFrag
@@ -736,7 +732,7 @@ iotaHermesGambit :: IotaPattern
 iotaHermesGambit = IotaPattern [pattern| SOUTH_EAST deaqq |]
 
 fragHermesGambit :: Fragment (IotaExec as as' ': as) as'
-fragHermesGambit = Fragment $ Seq.singleton $ iotaCast iotaHermesGambit
+fragHermesGambit = fragSingleton iotaHermesGambit
 
 -- $( mkIotaFrag
 --      "HermesGambit"
@@ -753,10 +749,13 @@ iotaIrisGambit :: IotaPattern
 iotaIrisGambit = IotaPattern [pattern| NORTH_WEST qwaqde |]
 
 fragIrisGambit :: Fragment (IotaExec (IotaExec as' bs ': as) as' ': as) as'
-fragIrisGambit = Fragment $ Seq.singleton $ iotaCast iotaIrisGambit
+fragIrisGambit = fragSingleton iotaIrisGambit
 
 iotaCharonsGambit :: IotaPattern
 iotaCharonsGambit = IotaPattern [pattern| SOUTH_WEST aqdee |]
+
+fragCharonsGambit :: Fragment as bs
+fragCharonsGambit = fragSingleton iotaCharonsGambit
 
 $( mkIotaFrag
      "ScribesReflection"
@@ -1047,7 +1046,7 @@ type family FragThothsGambit (s :: [Type]) where
   FragThothsGambit (IotaHList as ': IotaExec (a ': s) a' ': s) = (IotaHList (FragThothsGambitHList a a' as) ': s)
 
 fragThothsGambit :: Fragment s (FragThothsGambit s)
-fragThothsGambit = Fragment $ Seq.singleton $ iotaCast iotaThothsGambit
+fragThothsGambit = fragSingleton iotaThothsGambit
 
 -- $( mkIotaFrag
 --      "ThothsGambit"
@@ -1090,7 +1089,7 @@ iotaFlocksDisintegration = IotaPattern [pattern| NORTH_WEST qwaeawq |]
 
 class FragFlocksDisintegration as bs | as -> bs where
   fragFlocksDisintegration :: Fragment as bs
-  fragFlocksDisintegration = Fragment $ Seq.singleton $ iotaCast iotaFlocksDisintegration
+  fragFlocksDisintegration = fragSingleton iotaFlocksDisintegration
 instance (HReverse as ras, HAppendFD ras bs rasbs) => FragFlocksDisintegration (IotaHList as ': bs) rasbs
 
 $( mkIotaFrag
@@ -1181,7 +1180,7 @@ instance IotaBookkeepersGambit (True ': as) => IotaBookkeepersGambit (True ': Tr
 class IotaBookkeepersGambit keep => FragBookkeepersGambit keep where
   type FragBookkeepersGambitResult keep (as :: [Type]) :: [Type]
   fragBookkeepersGambit :: Fragment as (FragBookkeepersGambitResult keep as)
-  fragBookkeepersGambit = Fragment $ Seq.singleton $ iotaCast $ iotaBookkeepersGambit @keep
+  fragBookkeepersGambit = fragSingleton $ iotaBookkeepersGambit @keep
 instance {-# OVERLAPPING #-} FragBookkeepersGambit '[False] where
   type FragBookkeepersGambitResult '[False] (a ': as) = as
 instance {-# OVERLAPPING #-} FragBookkeepersGambit '[True] where
@@ -1209,28 +1208,15 @@ precomputedNumericalReflectionSuffixes = Seq.fromList $ [] : suffixes
   suffixes = map (parseAngles . BC.unpack) rawLines
   parseAngles as = fromMaybe (error $ "invalid angles: '" <> as <> "'") $ traverse angleParse as
 
-iotaNumericalReflection :: forall n. KnownNat n => IotaPattern
-iotaNumericalReflection = IotaPattern $ Pattern direction $ prefix <> suffix
+iotaNumericalReflection :: Int -> IotaPattern
+iotaNumericalReflection n = IotaPattern $ Pattern dir $ ang <> suffix
  where
-  prefix = [angles| aqaa |]
-  direction = DirectionSE
-  nInt :: Int
-  nInt = fromInteger $ naturalToInteger $ natVal $ Proxy @n
-  suffix = fromMaybe err $ precomputedNumericalReflectionSuffixes Seq.!? nInt
+  Pattern dirPos angPos = [pattern| NORTH_EAST aqaa |]
+  Pattern dirNeg angNeg = [pattern| SOUTH_EAST dedd |]
+  dir = if n >= 0 then dirPos else dirNeg
+  ang = if n >= 0 then angPos else angNeg
+  suffix = fromMaybe err $ precomputedNumericalReflectionSuffixes Seq.!? (abs n)
   err = error "number too large for numerical reflection"
 
-iotaNegativeNumericalReflection :: forall n. KnownNat n => IotaPattern
-iotaNegativeNumericalReflection = IotaPattern $ Pattern direction $ prefix <> suffix
- where
-  prefix = [angles| dedd |]
-  direction = DirectionNE
-  nInt :: Int
-  nInt = fromInteger $ naturalToInteger $ natVal $ Proxy @n
-  suffix = fromMaybe err $ precomputedNumericalReflectionSuffixes Seq.!? nInt
-  err = error "number too large for numerical reflection"
-
-fragNumericalReflection :: forall n as. KnownNat n => Fragment as (IotaNumber ': as)
-fragNumericalReflection = Fragment $ Seq.singleton $ iotaCast $ iotaNumericalReflection @n
-
-fragNegativeNumericalReflection :: forall n as. KnownNat n => Fragment as (IotaNumber ': as)
-fragNegativeNumericalReflection = Fragment $ Seq.singleton $ iotaCast $ iotaNegativeNumericalReflection @n
+fragNumericalReflection :: Int -> Fragment as (IotaNumber ': as)
+fragNumericalReflection = fragSingleton . iotaNumericalReflection

@@ -29,12 +29,10 @@ import Language.Haskell.TH (
 import Language.Haskell.TH.Syntax (Lift (lift))
 
 import Data.List (unfoldr)
-import Data.Sequence qualified as Seq
 import Data.Text qualified as T
 
-import Haskcasting.Fragment (Fragment (Fragment))
+import Haskcasting.Fragment (fragSingleton, Fragment)
 import Haskcasting.Iota (
-  IotaCast (iotaCast),
   IotaGreatPattern (IotaGreatPattern),
   IotaPattern (IotaPattern),
  )
@@ -45,7 +43,7 @@ infixr 6 <<>>
 (<<>>) = liftA2 (<>)
 
 fragExpr :: Quote m => Name -> m Exp
-fragExpr iotaName = [e|Fragment $ Seq.singleton $ iotaCast $(varE iotaName)|]
+fragExpr iotaName = [e|fragSingleton $(varE iotaName)|]
 
 parseFragType :: Type -> ([TyVarBndr Specificity], Cxt, ([Type], [Type]))
 parseFragType = \case

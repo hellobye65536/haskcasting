@@ -1,16 +1,26 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE MagicHash #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Haskcasting.Compound.Hexcasting (dupN, mergeTopN, hlistNth) where
+module Haskcasting.Compound.Hexcasting (
+  natValInt,
+  dupN,
+  mergeTopN,
+  hlistNth,
+) where
 
 import Data.Sequence qualified as Seq
-import GHC.TypeNats (KnownNat, type (-))
+import GHC.Exts (proxy#)
+import GHC.TypeNats (KnownNat, natVal', type (-))
 import Haskcasting.Fragment (Fragment (Fragment))
 import Haskcasting.Iota (IotaCast (iotaCast), IotaHList)
 
 import Haskcasting.Patterns.Hexcasting
+
+natValInt :: forall n. KnownNat n => Int
+natValInt = fromIntegral $ natVal' (proxy# @n)
 
 type family DupN n a as where
   DupN 0 a as = as
@@ -20,7 +30,7 @@ dupN :: forall n a as. KnownNat n => Fragment (a ': as) (DupN n a as)
 dupN =
   Fragment $
     Seq.fromList
-      [ iotaCast $ iotaNumericalReflection @n
+      [ iotaCast $ iotaNumericalReflection $ natValInt @n
       , iotaCast $ iotaGeminiGambit
       ]
 
@@ -36,7 +46,7 @@ mergeTopN :: forall n as. KnownNat n => Fragment as (IotaHList (MergeTopNHList n
 mergeTopN =
   Fragment $
     Seq.fromList
-      [ iotaCast $ iotaNumericalReflection @n
+      [ iotaCast $ iotaNumericalReflection $ natValInt @n
       , iotaCast $ iotaFlocksGambit
       ]
 
@@ -48,6 +58,6 @@ hlistNth :: forall n as s. KnownNat n => Fragment (IotaHList as ': s) (HListNth 
 hlistNth =
   Fragment $
     Seq.fromList
-      [ iotaCast $ iotaNumericalReflection @n
+      [ iotaCast $ iotaNumericalReflection $ natValInt @n
       , iotaCast $ iotaSelectionDistillation
       ]

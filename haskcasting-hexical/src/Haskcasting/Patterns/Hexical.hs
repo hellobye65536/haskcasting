@@ -10,14 +10,12 @@ module Haskcasting.Patterns.Hexical where
 
 import Data.Kind (Type)
 import Data.Proxy (Proxy (Proxy))
-import Data.Sequence qualified as Seq
 import GHC.Natural (naturalToInteger)
 import GHC.TypeNats (KnownNat, natVal, type (-))
-import Haskcasting.Fragment (Fragment (Fragment))
+import Haskcasting.Fragment (Fragment, fragSingleton)
 import Haskcasting.Iota (
   IotaAny,
   IotaBoolean,
-  IotaCast (iotaCast),
   IotaEntity,
   IotaExec,
   IotaList,
@@ -371,7 +369,7 @@ iotaJanusGambit :: IotaPattern
 iotaJanusGambit = IotaPattern [pattern| SOUTH_WEST aadee |]
 
 fragJanusGambit :: Fragment as bs
-fragJanusGambit = Fragment $ Seq.singleton $ iotaCast iotaJanusGambit
+fragJanusGambit = fragSingleton iotaJanusGambit
 
 iotaAtalantasGambit :: IotaPattern
 iotaAtalantasGambit = IotaPattern [pattern| SOUTH_WEST aqdea |]
@@ -396,7 +394,7 @@ type family FragSisyphusGambit (as :: [Type]) (s :: [Type]) where
   FragSisyphusGambit (a ': as) (a ': s) = FragSisyphusGambit as s
 
 fragSisyphusGambit :: Fragment (IotaExec as as ': s) (FragSisyphusGambit as s)
-fragSisyphusGambit = Fragment $ Seq.singleton $ iotaCast iotaSisyphusGambit
+fragSisyphusGambit = fragSingleton iotaSisyphusGambit
 
 $( mkIotaFrag
      "ThemisGambit"
@@ -1222,4 +1220,4 @@ type family FragSehkmetsGambit n (as :: [Type]) where
   FragSehkmetsGambit n (a ': as) = a ': (FragSehkmetsGambit (n - 1) as)
 
 fragSehkmetsGambit :: forall n as. KnownNat n => Fragment as (FragSehkmetsGambit n as)
-fragSehkmetsGambit = Fragment $ Seq.singleton $ iotaCast $ iotaSehkmetsGambit @n
+fragSehkmetsGambit = fragSingleton $ iotaSehkmetsGambit @n

@@ -61,7 +61,7 @@ explodeLocation =
   dupN @5
     +.+ fragBreakBlock
     +.+ fragCreateWater
-    +.+ fragNumericalReflection @10
+    +.+ fragNumericalReflection 10
     +.+ fragExplosion
     +.+ fragConjureBlock
     +.+ fragBreakBlock

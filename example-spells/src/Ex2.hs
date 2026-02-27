@@ -8,7 +8,7 @@ import Data.Text.IO qualified as T
 import Haskcasting.Compound.Hexcasting (dupN)
 import Haskcasting.Fragment (
   Fragment,
-  fragmentAsIota,
+  fragAsIota,
   (+.+),
  )
 import Haskcasting.Iota (IotaVector)
@@ -21,7 +21,7 @@ explodeLocation =
   dupN @5
     +.+ fragBreakBlock
     +.+ fragCreateWater
-    +.+ fragNumericalReflection @10
+    +.+ fragNumericalReflection 10
     +.+ fragExplosion
     +.+ fragConjureBlock
     +.+ fragBreakBlock
@@ -31,4 +31,4 @@ main = do
   T.putStrLn "\n==== explode location ===="
   mapM_ T.putStrLn $
     serializeADefault $
-      fragmentAsIota explodeLocation
+      fragAsIota explodeLocation

@@ -7,7 +7,7 @@ import Data.Text.IO qualified as T
 
 import Haskcasting.Fragment (
   Fragment,
-  fragmentAsIota,
+  fragAsIota,
   (+.+),
  )
 import Haskcasting.Serialize (serializeADefault)
@@ -28,4 +28,4 @@ main = do
   T.putStrLn "\n==== break block ===="
   mapM_ T.putStrLn $
     serializeADefault $
-      fragmentAsIota breakBlock
+      fragAsIota breakBlock
