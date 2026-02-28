@@ -343,11 +343,11 @@ $( mkIotaFrag
      [[t|forall a. Fragment '[a] '[IotaBoolean]|]]
  )
 
-$( mkIotaFrag
-     "AugursExaltation"
-     [pattern| SOUTH_EAST awdd |]
-     [[t|forall a. Fragment '[a, a, IotaBoolean] '[a]|]]
- )
+iotaAugursExaltation :: IotaPattern
+iotaAugursExaltation = IotaPattern [pattern| SOUTH_EAST awdd |]
+
+fragAugursExaltation :: forall a s. Fragment (a ': a ': IotaBoolean ': s) (a ': s)
+fragAugursExaltation = fragSingleton iotaAugursExaltation
 
 $( mkIotaFrag
      "EntropyReflection"
@@ -1015,7 +1015,7 @@ $( mkIotaFrag
      "IntegrationDistillation"
      [pattern| SOUTH_WEST edqde |]
      [ [t|forall a. Fragment '[a, IotaList a] '[IotaList a]|]
-     , [t|forall a as as'. HReverse (a : as) as' => Fragment '[a, IotaHList as] '[IotaHList as']|]
+     , [t|forall a as as' p. (HReverse (a : p) as', HReverse p as) => Fragment '[a, IotaHList as] '[IotaHList as']|]
      ]
  )
 
@@ -1023,7 +1023,7 @@ $( mkIotaFrag
      "DerivationDecomposition"
      [pattern| NORTH_WEST qaeaq |]
      [ [t|forall a. Fragment '[IotaList a] '[a, IotaList a]|]
-     , [t|forall a as as'. HReverse (a : as) as' => Fragment '[IotaHList as'] '[a, IotaHList as]|]
+     , [t|forall a as as' p. (HReverse (a : p) as', HReverse p as) => Fragment '[IotaHList as'] '[a, IotaHList as]|]
      ]
  )
 
@@ -1177,28 +1177,14 @@ instance IotaBookkeepersGambit (True ': as) => IotaBookkeepersGambit (True ': Tr
    where
     Pattern dir ang = patternBookkeepersGambit @(True ': as)
 
-class IotaBookkeepersGambit keep => FragBookkeepersGambit keep where
-  type FragBookkeepersGambitResult keep (as :: [Type]) :: [Type]
-  fragBookkeepersGambit :: Fragment as (FragBookkeepersGambitResult keep as)
-  fragBookkeepersGambit = fragSingleton $ iotaBookkeepersGambit @keep
-instance {-# OVERLAPPING #-} FragBookkeepersGambit '[False] where
-  type FragBookkeepersGambitResult '[False] (a ': as) = as
-instance {-# OVERLAPPING #-} FragBookkeepersGambit '[True] where
-  type FragBookkeepersGambitResult '[True] (a ': as) = (a ': as)
-instance
-  (IotaBookkeepersGambit (False ': b ': keep), FragBookkeepersGambit (b ': keep)) =>
-  FragBookkeepersGambit (False ': b ': keep)
-  where
-  type
-    FragBookkeepersGambitResult (False ': b ': keep) (a ': as) =
-      FragBookkeepersGambitResult (b ': keep) as
-instance
-  (IotaBookkeepersGambit (True ': b ': keep), FragBookkeepersGambit (b ': keep)) =>
-  FragBookkeepersGambit (True ': b ': keep)
-  where
-  type
-    FragBookkeepersGambitResult (True ': b ': keep) (a ': as) =
-      FragBookkeepersGambitResult (b ': keep) (a ': as)
+type family FragBookkeepersGambit keep as where
+  FragBookkeepersGambit '[False] (a ': as) = as
+  FragBookkeepersGambit '[True] (a ': as) = a ': as
+  FragBookkeepersGambit (False ': keep) (a ': as) = FragBookkeepersGambit keep as
+  FragBookkeepersGambit (True ': keep) (a ': as) = a ': FragBookkeepersGambit keep as
+
+fragBookkeepersGambit :: forall keep as. IotaBookkeepersGambit keep => Fragment as (FragBookkeepersGambit keep as)
+fragBookkeepersGambit = fragSingleton $ iotaBookkeepersGambit @keep
 
 precomputedNumericalReflectionSuffixes :: Seq [Angle]
 precomputedNumericalReflectionSuffixes = Seq.fromList $ [] : suffixes

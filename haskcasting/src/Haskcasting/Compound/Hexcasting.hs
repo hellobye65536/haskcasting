@@ -9,6 +9,8 @@ module Haskcasting.Compound.Hexcasting (
   dupN,
   mergeTopN,
   hlistNth,
+  fish,
+  fishDup,
 ) where
 
 import Data.Sequence qualified as Seq
@@ -54,10 +56,30 @@ type family HListNth n as where
   HListNth 0 (a ': as) = a
   HListNth n (a ': as) = HListNth (n - 1) as
 
+type family HListRemoveNth n as where
+  HListRemoveNth 0 (a ': as) = as
+  HListRemoveNth n (a ': as) = a ': HListRemoveNth (n - 1) as
+
 hlistNth :: forall n as s. KnownNat n => Fragment (IotaHList as ': s) (HListNth n as ': s)
 hlistNth =
   Fragment $
     Seq.fromList
       [ iotaCast $ iotaNumericalReflection $ natValInt @n
       , iotaCast $ iotaSelectionDistillation
+      ]
+
+fish :: forall n s. KnownNat n => Fragment s (HListNth n s ': HListRemoveNth n s)
+fish =
+  Fragment $
+    Seq.fromList
+      [ iotaCast $ iotaNumericalReflection $ natValInt @n
+      , iotaCast $ iotaFishermansGambit
+      ]
+
+fishDup :: forall n s. KnownNat n => Fragment s (HListNth n s ': s)
+fishDup =
+  Fragment $
+    Seq.fromList
+      [ iotaCast $ iotaNumericalReflection $ natValInt @n
+      , iotaCast $ iotaFishermansGambitII
       ]

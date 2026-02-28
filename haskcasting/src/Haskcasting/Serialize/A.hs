@@ -23,6 +23,7 @@ import Haskcasting.Pattern qualified as P
 data SerializeOptions = SerializeOptions
   { serOptGreatSpells :: HashMap Text Pattern
   , serOptPatternIntrinsics :: Bool
+  , serOptMaxLineLength :: Int
   }
 
 defaultSerializeOptions :: SerializeOptions
@@ -30,6 +31,7 @@ defaultSerializeOptions =
   SerializeOptions
     { serOptGreatSpells = HM.empty
     , serOptPatternIntrinsics = True
+    , serOptMaxLineLength = 250
     }
 
 data Inst
@@ -94,4 +96,4 @@ serialize opt = reverse . foldl' go [] . fmap (serializeInst opt)
      in if T.length out' > maxLength
           then s : allouts
           else out' : outs
-  maxLength = 250 :: Int
+  maxLength = serOptMaxLineLength opt

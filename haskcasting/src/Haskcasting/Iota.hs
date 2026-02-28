@@ -18,6 +18,7 @@ module Haskcasting.Iota (
   IotaPattern (..),
   IotaGreatPattern (..),
   IotaExec (..),
+  IotaExecId,
   IotaHList (.., IotaHNil, IotaHCons),
   IotaList (..),
   IotaAnyList,
@@ -114,6 +115,7 @@ instance Iota IotaGreatPattern where
 
 newtype IotaExec as bs where
   IotaExec :: forall (as :: [Type]) (bs :: [Type]). IotaAnyList -> IotaExec as bs
+type IotaExecId s = IotaExec s s
 instance Iota (IotaExec as bs) where
   iotaShow (IotaExec inner) = iotaShow inner
   iotaSerializeA opt (IotaExec inner) = iotaSerializeA opt inner
@@ -210,3 +212,8 @@ instance
     IotaHList xs' <- iotaTryCast (IotaList xs)
     Just $ IotaHList (x' `HCons` xs')
   iotaTryCast _ = Nothing
+
+instance IotaCast (IotaHList '[]) (IotaExec s s) where
+  iotaCast :: IotaHList '[] -> IotaExec s s
+  iotaCast = const $ IotaExec $ IotaList Seq.empty
+
