@@ -24,7 +24,8 @@ As an example, the type
 ```hs
 '[IotaNumber, IotaNumber, IotaList IotaNumber]
 ```
-would describe a stack of the form (INSERT IMAGE HERE)
+would describe a stack of the form:
+<img width="1920" height="1036" alt="image" src="https://github.com/user-attachments/assets/8a4f49ab-8f1d-425b-b898-bcb629cad154" />
 
 Notably, this is the reverse of the order that arguments are defined in the Hex book,
 so a spell like `Explosion (vector, number →)` would accept a stack of type `'[IotaNumber, IotaVector]`.
