@@ -39,7 +39,7 @@ import Type.Reflection (TypeRep, Typeable, eqTypeRep, typeOf, typeRep, type (:~~
 class Iota a where
   iotaShow :: a -> Text
   iotaSerializeA :: SA.SerializeOptions -> a -> Seq SA.Inst
-  iotaSerializeA _opt a = Seq.singleton $ SA.Suspend $ iotaShow a
+  iotaSerializeA _opt a = Seq.singleton $ SA.ISuspend $ iotaShow a
 
 class (Iota a, Iota b) => IotaCast a b where
   iotaCast :: a -> b
@@ -73,22 +73,22 @@ instance {-# OVERLAPPING #-} IotaCast IotaAny IotaAny where
 data IotaNull = IotaNull deriving (Eq, Ord, Bounded, Enum)
 instance Iota IotaNull where
   iotaShow IotaNull = "Null"
-  iotaSerializeA _opt IotaNull = Seq.singleton SA.Null
+  iotaSerializeA _opt IotaNull = Seq.singleton SA.INull
 
 newtype IotaBoolean = IotaBoolean Bool deriving (Eq, Ord, Bounded, Enum)
 instance Iota IotaBoolean where
   iotaShow (IotaBoolean b) = T.show b
-  iotaSerializeA _opt (IotaBoolean b) = Seq.singleton $ SA.Bool b
+  iotaSerializeA _opt (IotaBoolean b) = Seq.singleton $ SA.IBool b
 
 newtype IotaNumber = IotaNumber Double deriving (Eq, Ord)
 instance Iota IotaNumber where
   iotaShow (IotaNumber n) = T.show n
-  iotaSerializeA _opt (IotaNumber n) = Seq.singleton $ SA.Number n
+  iotaSerializeA _opt (IotaNumber n) = Seq.singleton $ SA.INumber n
 
 data IotaVector = IotaVector Double Double Double deriving (Eq)
 instance Iota IotaVector where
   iotaShow (IotaVector x y z) = "(" <> T.show x <> ", " <> T.show y <> ", " <> T.show z <> ")"
-  iotaSerializeA _opt (IotaVector x y z) = Seq.singleton $ SA.Vector x y z
+  iotaSerializeA _opt (IotaVector x y z) = Seq.singleton $ SA.IVector x y z
 
 data IotaEntity = IotaEntity Text
 instance Iota IotaEntity where
@@ -97,7 +97,7 @@ instance Iota IotaEntity where
 data IotaPattern = IotaPattern Pattern deriving (Eq, TH.Lift)
 instance Iota IotaPattern where
   iotaShow (IotaPattern pat) = patternShow pat
-  iotaSerializeA _opt (IotaPattern pat) = Seq.singleton $ SA.Pattern pat
+  iotaSerializeA _opt (IotaPattern pat) = Seq.singleton $ SA.IPattern pat
 
 data IotaGreatPattern = IotaGreatPattern Text Pattern deriving (Eq, TH.Lift)
 instance Iota IotaGreatPattern where
@@ -110,8 +110,8 @@ instance Iota IotaGreatPattern where
   iotaSerializeA
     (SA.SerializeOptions {serOptGreatSpells = gps})
     iota@(IotaGreatPattern tag _pat) = Seq.singleton $ case HM.lookup tag gps of
-      Just gp -> SA.Pattern gp
-      Nothing -> SA.Suspend $ iotaShow iota
+      Just gp -> SA.IPattern gp
+      Nothing -> SA.ISuspend $ iotaShow iota
 
 newtype IotaExec as bs where
   IotaExec :: forall (as :: [Type]) (bs :: [Type]). IotaAnyList -> IotaExec as bs
@@ -160,7 +160,7 @@ instance IotaHListImpl as => Iota (IotaHList as) where
   iotaShow xs = "[" <> iotaShowHList xs
   iotaSerializeA opt xs =
     let (xs', len) = iotaSerializeAHList opt xs
-     in xs' Seq.|> SA.MergeN len
+     in xs' Seq.|> SA.IMergeN len
 
 newtype IotaList a = IotaList (Seq a) deriving (Semigroup, Monoid)
 instance Iota a => Iota (IotaList a) where
@@ -169,7 +169,7 @@ instance Iota a => Iota (IotaList a) where
     go Empty = "]"
     go (y :<| Empty) = iotaShow y <> "]"
     go (y :<| ys) = iotaShow y <> ", " <> go ys
-  iotaSerializeA opt (IotaList xs) = foldMap (iotaSerializeA opt) xs Seq.|> SA.MergeN (Seq.length xs)
+  iotaSerializeA opt (IotaList xs) = foldMap (iotaSerializeA opt) xs Seq.|> SA.IMergeN (Seq.length xs)
 type IotaAnyList = IotaList IotaAny
 
 instance IotaCast a b => IotaCast (IotaList a) (IotaList b) where

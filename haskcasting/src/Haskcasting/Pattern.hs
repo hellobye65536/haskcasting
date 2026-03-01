@@ -35,7 +35,7 @@ data Direction
   | DirectionSW
   | DirectionW
   | DirectionNW
-  deriving (Eq, Bounded, Enum, Lift)
+  deriving (Eq, Bounded, Enum, Lift, Show)
 
 directionShow :: Direction -> Text
 directionShow = \case
@@ -63,7 +63,7 @@ data Angle
   | AngleS
   | AngleA
   | AngleQ
-  deriving (Eq, Bounded, Enum, Lift)
+  deriving (Eq, Bounded, Enum, Lift, Show)
 
 angleShow :: Angle -> Char
 angleShow = \case
@@ -85,7 +85,7 @@ angleParse = \case
   _ -> Nothing
 
 data Pattern = Pattern Direction [Angle]
-  deriving (Eq, Lift)
+  deriving (Eq, Lift, Show)
 
 patternDirection :: Pattern -> Direction
 patternDirection (Pattern dir _) = dir

@@ -25,7 +25,7 @@ import Haskcasting.Patterns.TH (mkFrag)
 newtype IotaString = IotaString Text
 instance Iota IotaString where
   iotaShow (IotaString s) = "\"" <> s <> "\""
-  iotaSerializeA _opt (IotaString s) = Seq.singleton $ SA.String s
+  iotaSerializeA _opt (IotaString s) = Seq.singleton $ SA.IString s
 
 newtype IotaMatrix = IotaMatrix [[Double]]
 instance Iota IotaMatrix where

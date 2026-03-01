@@ -1209,9 +1209,10 @@ $( mkGreatIotaFrag
 -- special
 
 iotaSehkmetsGambit :: forall n. KnownNat n => IotaPattern
-iotaSehkmetsGambit = IotaPattern $ Pattern DirectionSW $ take (nInt + 5) $ cycle baseAngles
+iotaSehkmetsGambit = IotaPattern $ Pattern DirectionSW $ baseAngles <> take nInt (cycle tailAngles)
  where
   baseAngles = [angles| qaqdd |]
+  tailAngles = [angles| qe |]
   nInt :: Int
   nInt = fromInteger $ naturalToInteger $ natVal $ Proxy @n
 
