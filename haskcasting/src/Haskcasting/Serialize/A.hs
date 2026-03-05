@@ -14,9 +14,9 @@ module Haskcasting.Serialize.A (
 import Data.Foldable (toList)
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HM
-import Data.List (elemIndex, (!?))
+import Data.List (elemIndex, sort, (!?))
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Sequence (Seq)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -45,9 +45,10 @@ data Inst
   | ISuspend Text
   | INumber Double
   | IVector Double Double Double
-  | IExec
+  | IExec Int Int
   | INull
   | IBool Bool
+  deriving (Eq)
 
 data VmInst
   = VmPattern Pattern
@@ -56,7 +57,7 @@ data VmInst
   | VmSuspend Text
   | VmNumber Double
   | VmVector Double Double Double
-  | VmExec
+  | VmExec Int Int
   | VmReuse Int
   | VmIntrinsicConsideration
   | VmIntrinsicIntrospection
@@ -93,7 +94,7 @@ simVmInst st = \case
   VmSuspend tag -> VmsSuspend tag : st
   VmNumber _n -> VmsUnknown : st
   VmVector _x _y _z -> VmsUnknown : st
-  VmExec -> []
+  VmExec i o -> replicate o VmsUnknown <> drop (i + 1) st
   VmReuse n -> fromMaybe VmsUnknown (st !? n) : st
   VmIntrinsicConsideration -> VmsPattern patConsideration : st
   VmIntrinsicIntrospection -> VmsPattern patIntrospection : st
@@ -104,7 +105,14 @@ convertInsts opt = go [] . (if suspendHoist then hoistSuspends else id)
  where
   bootstrap = serOptBootstrap opt
   suspendHoist = serOptSuspendHoisting opt
-  hoistSuspends is = filter (\case ISuspend _ -> True; _ -> False) is <> is
+  hoistSuspends is = suspends <> is
+   where
+    suspends =
+      map (ISuspend . NE.head)
+        . NE.group
+        . sort
+        . mapMaybe (\case ISuspend tag -> Just tag; _ -> Nothing)
+        $ is
   go _stack [] = []
   go stack is = let (vis, is') = inner stack is in vis <> go (foldl' simVmInst stack vis) is'
   inner = if bootstrap then innerBootstrap else innerNormal
@@ -127,13 +135,13 @@ convertInsts opt = go [] . (if suspendHoist then hoistSuspends else id)
         ([VmNumber n], is')
     | (IVector x y z : is') <- is =
         ([VmVector x y z], is')
-    | (IExec : is') <- is =
-        ([VmExec], is')
+    | (IExec i o : is') <- is =
+        ([VmExec i o], is')
     | (INull : is') <- is =
-        ([VmPattern [pattern| EAST d |], VmExec], is')
+        ([VmPattern [pattern| EAST d |], VmExec 0 1], is')
     | (IBool b : is') <- is =
         let p = if b then [pattern| SOUTH_EAST aqae |] else [pattern| NORTH_EAST dedq |]
-         in ([VmPattern p, VmExec], is')
+         in ([VmPattern p, VmExec 0 1], is')
     | otherwise = innerBootstrap stack is
   innerBootstrap _stack is
     | (IPattern pat : is') <- is =
@@ -152,17 +160,11 @@ serializeVmInst :: SerializeOptions -> VmInst -> Text
 serializeVmInst opt = \case
   VmPattern pat -> "0;" <> patToStr pat
   VmMergeN n -> "1;" <> T.show n
-  VmString s ->
-    if T.elem ';' s
-      then error ("string: '" <> T.unpack s <> "' contains a semicolon")
-      else "2;" <> s
-  VmSuspend tag ->
-    if T.elem ';' tag
-      then error ("tag: '" <> T.unpack tag <> "' contains a semicolon")
-      else "3;" <> tag
+  VmString s -> "2;" <> noSemi "string" s
+  VmSuspend tag -> "3;" <> noSemi "tag" tag
   VmNumber n -> "4;" <> showNum n
   VmVector x y z -> "5;" <> showNum x <> "," <> showNum y <> "," <> showNum z
-  VmExec -> "6"
+  VmExec _i _o -> "6"
   VmReuse n -> "7;" <> T.show n
   VmIntrinsicConsideration -> "8"
   VmIntrinsicIntrospection -> "9"
@@ -173,6 +175,10 @@ serializeVmInst opt = \case
   groupStrokes [] = []
   groupStrokes [a] = [a]
   groupStrokes (a : b : as) = (6 + a + 6 * b) : groupStrokes as
+  noSemi msg tx =
+    if T.elem ';' tx
+      then error (msg <> ": '" <> T.unpack tx <> "' contains a semicolon")
+      else tx
   showNum n =
     if fromIntegral @Int (round n) == n
       then T.show $ (round n :: Int)
