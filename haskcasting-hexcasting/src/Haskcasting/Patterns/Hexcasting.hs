@@ -1144,12 +1144,6 @@ $( mkIotaFrag
      [[t|Fragment '[IotaNumber, IotaEntity] '[]|]]
  )
 
-iotaConsideration, iotaIntrospection, iotaRetrospection, iotaEvanition :: IotaPattern
-iotaConsideration = IotaPattern [pattern| WEST qqqaw |]
-iotaIntrospection = IotaPattern [pattern| WEST qqq |]
-iotaRetrospection = IotaPattern [pattern| EAST eee |]
-iotaEvanition = IotaPattern [pattern| EAST eeedw |]
-
 -- special
 
 class IotaBookkeepersGambit keep where
@@ -1189,7 +1183,7 @@ fragBookkeepersGambit = fragSingleton $ iotaBookkeepersGambit @keep
 precomputedNumericalReflectionSuffixes :: Seq [Angle]
 precomputedNumericalReflectionSuffixes = Seq.fromList $ [] : suffixes
  where
-  raw = $(embedFileRelative "src/Haskcasting/Patterns/Hexcasting/precomputed_numbers.txt")
+  raw = $(embedFileRelative "precomputed_numbers.txt")
   rawLines = filter (not . BC.null) $ map (BC.strip) $ BC.split '\n' raw
   suffixes = map (parseAngles . BC.unpack) rawLines
   parseAngles as = fromMaybe (error $ "invalid angles: '" <> as <> "'") $ traverse angleParse as

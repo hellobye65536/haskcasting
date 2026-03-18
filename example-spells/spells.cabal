@@ -19,6 +19,7 @@ common common
         containers,
         unordered-containers,
         haskcasting,
+        haskcasting-hexcasting,
     ghc-options:
         -Wall
 

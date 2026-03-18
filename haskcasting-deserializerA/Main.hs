@@ -9,7 +9,7 @@ import Data.Sequence qualified as Seq
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
-import Haskcasting.Embed (embedConsideration, embedIntroRetro)
+import Haskcasting.Embed (embedConsideration, embedIntroRetro, iotaConsideration, iotaIntrospection, iotaRetrospection)
 import Haskcasting.Fragment
 import Haskcasting.Iota
 import Haskcasting.Iota.Moreiotas (IotaString (IotaString))

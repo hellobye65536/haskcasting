@@ -1,7 +1,12 @@
 {-# LANGUAGE MultiWayIf #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 module Haskcasting.Embed (
+  iotaConsideration,
+  iotaIntrospection,
+  iotaRetrospection,
+  iotaEvanition,
   escapedPatterns,
   embedIntroRetro,
   embedConsideration,
@@ -22,13 +27,13 @@ import Haskcasting.Iota (
   IotaPattern (IotaPattern),
   IotaTryCast (iotaTryCast),
  )
-import Haskcasting.Pattern (Angle, Pattern (Pattern))
-import Haskcasting.Patterns.Hexcasting (
-  iotaConsideration,
-  iotaEvanition,
-  iotaIntrospection,
-  iotaRetrospection,
- )
+import Haskcasting.Pattern (Angle, Pattern (Pattern), pattern)
+
+iotaConsideration, iotaIntrospection, iotaRetrospection, iotaEvanition :: IotaPattern
+iotaConsideration = IotaPattern [pattern| WEST qqqaw |]
+iotaIntrospection = IotaPattern [pattern| WEST qqq |]
+iotaRetrospection = IotaPattern [pattern| EAST eee |]
+iotaEvanition = IotaPattern [pattern| EAST eeedw |]
 
 anglesIntrospection, anglesRetrospection :: [Angle]
 (IotaPattern (Pattern _ anglesIntrospection)) = iotaIntrospection

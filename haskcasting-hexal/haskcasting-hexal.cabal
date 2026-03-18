@@ -25,6 +25,7 @@ library
         Haskcasting.Patterns.Hexal
     build-depends:
         haskcasting,
+        haskcasting-hexcasting,
         haskcasting-moreiotas,
         text,
         containers,

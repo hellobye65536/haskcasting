@@ -1,9 +1,9 @@
 cabal-version:      2.4
-name:               haskcasting
+name:               haskcasting-hexcasting
 version:            0.1.0.0
 
-synopsis:           Haskell DSL for Hexcasting
-description:        Haskell DSL for Hexcasting
+synopsis:           Hexcasting support library for Haskcasting
+description:        Hexcasting support library for Haskcasting
 
 license:            MIT
 license-file:       LICENSE
@@ -21,16 +21,12 @@ library
     import:           common
     hs-source-dirs:   src
     exposed-modules:
-        Haskcasting.Pattern
-        Haskcasting.Iota
-        Haskcasting.Fragment
-        Haskcasting.Embed
-        Haskcasting.Serialize
-        Haskcasting.Serialize.A
-        Haskcasting.Patterns.TH
+        Haskcasting.Patterns.Hexcasting
+        Haskcasting.Compound.Hexcasting
     build-depends:
-        template-haskell,
+        haskcasting,
         text,
         containers,
-        unordered-containers,
+        file-embed,
+        bytestring,
         HList,
