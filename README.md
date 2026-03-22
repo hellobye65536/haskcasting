@@ -71,3 +71,9 @@ explodeLocation =
 Notice the generic type signature `Fragment (IotaVector ': a) a`.
 Of note is the type level operator `':`, that prepends a type to a type level list.
 Then, this spell expects a stack with a vector at the top, and ends with the stack without that vector.
+
+### Serialization and Deserialization
+
+Serialization works on iotas, and can be done through
+- Printing the iota, using `iotaShow :: Iota a => a -> Text`
+- Using `serializeA :: Iota a => SA.SerializeOptions -> a -> [Text]`, see [this](./haskcasting-deserializerA/README.md) for more details
