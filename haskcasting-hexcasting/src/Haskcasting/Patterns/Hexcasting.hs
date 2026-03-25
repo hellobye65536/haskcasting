@@ -10,8 +10,10 @@ module Haskcasting.Patterns.Hexcasting where
 
 import Data.ByteString.Char8 qualified as BC
 import Data.FileEmbed (embedFileRelative)
+import Data.Foldable (toList)
 import Data.HList (HAppendFD, HAppendListR, HReverse)
 import Data.Kind (Type)
+import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.Maybe (fromMaybe)
 import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
@@ -1146,39 +1148,29 @@ $( mkIotaFrag
 
 -- special
 
-class IotaBookkeepersGambit keep where
-  patternBookkeepersGambit :: Pattern
-  iotaBookkeepersGambit :: IotaPattern
-  iotaBookkeepersGambit = IotaPattern $ patternBookkeepersGambit @keep
-instance IotaBookkeepersGambit '[False] where
-  patternBookkeepersGambit = [pattern| SOUTH_EAST a |]
-instance IotaBookkeepersGambit '[True] where
-  patternBookkeepersGambit = [pattern| EAST |]
-instance IotaBookkeepersGambit (False ': as) => IotaBookkeepersGambit (False ': False ': as) where
-  patternBookkeepersGambit = Pattern dir $ ang <> [angles| da |]
-   where
-    Pattern dir ang = patternBookkeepersGambit @(False ': as)
-instance IotaBookkeepersGambit (False ': as) => IotaBookkeepersGambit (True ': False ': as) where
-  patternBookkeepersGambit = Pattern dir $ ang <> [angles| e |]
-   where
-    Pattern dir ang = patternBookkeepersGambit @(False ': as)
-instance IotaBookkeepersGambit (True ': as) => IotaBookkeepersGambit (False ': True ': as) where
-  patternBookkeepersGambit = Pattern dir $ ang <> [angles| ea |]
-   where
-    Pattern dir ang = patternBookkeepersGambit @(True ': as)
-instance IotaBookkeepersGambit (True ': as) => IotaBookkeepersGambit (True ': True ': as) where
-  patternBookkeepersGambit = Pattern dir $ ang <> [angles| w |]
-   where
-    Pattern dir ang = patternBookkeepersGambit @(True ': as)
+iotaBookkeepersGambit :: NonEmpty Bool -> IotaPattern
+iotaBookkeepersGambit (b :| bs) = IotaPattern $ go (b :| bs)
+ where
+  cat (Pattern dir ang) ang' = Pattern dir (ang <> ang')
+  go (False :| []) = [pattern| SOUTH_EAST a |]
+  go (True :| []) = [pattern| EAST |]
+  go (False :| (False : as)) = go (False :| as) `cat` [angles| da |]
+  go (True :| (False : as)) = go (False :| as) `cat` [angles| e |]
+  go (False :| (True : as)) = go (True :| as) `cat` [angles| ea |]
+  go (True :| (True : as)) = go (True :| as) `cat` [angles| w |]
 
-type family FragBookkeepersGambit keep as where
-  FragBookkeepersGambit '[False] (a ': as) = as
-  FragBookkeepersGambit '[True] (a ': as) = a ': as
-  FragBookkeepersGambit (False ': keep) (a ': as) = FragBookkeepersGambit keep as
-  FragBookkeepersGambit (True ': keep) (a ': as) = a ': FragBookkeepersGambit keep as
-
-fragBookkeepersGambit :: forall keep as. IotaBookkeepersGambit keep => Fragment as (FragBookkeepersGambit keep as)
-fragBookkeepersGambit = fragSingleton $ iotaBookkeepersGambit @keep
+class FragBookkeepersGambit keep as bs | keep as -> bs where
+  fragBookkeepersGambitKeepList :: NonEmpty Bool
+  fragBookkeepersGambit :: Fragment as bs
+  fragBookkeepersGambit = fragSingleton $ iotaBookkeepersGambit $ fragBookkeepersGambitKeepList @keep @as @bs
+instance {-# OVERLAPPING #-} FragBookkeepersGambit '[False] (a ': as) as where
+  fragBookkeepersGambitKeepList = False :| []
+instance {-# OVERLAPPING #-} FragBookkeepersGambit '[True] (a ': as) (a ': as) where
+  fragBookkeepersGambitKeepList = True :| []
+instance FragBookkeepersGambit keep as bs => FragBookkeepersGambit (False ': keep) (a ': as) bs where
+  fragBookkeepersGambitKeepList = False :| (toList $ fragBookkeepersGambitKeepList @keep @as @bs)
+instance FragBookkeepersGambit keep as bs => FragBookkeepersGambit (True ': keep) (a ': as) (a ': bs) where
+  fragBookkeepersGambitKeepList = True :| (toList $ fragBookkeepersGambitKeepList @keep @as @bs)
 
 precomputedNumericalReflectionSuffixes :: Seq [Angle]
 precomputedNumericalReflectionSuffixes = Seq.fromList $ [] : suffixes
@@ -1193,8 +1185,7 @@ iotaNumericalReflection n = IotaPattern $ Pattern dir $ ang <> suffix
  where
   Pattern dirPos angPos = [pattern| NORTH_EAST aqaa |]
   Pattern dirNeg angNeg = [pattern| SOUTH_EAST dedd |]
-  dir = if n >= 0 then dirPos else dirNeg
-  ang = if n >= 0 then angPos else angNeg
+  (dir, ang) = if n >= 0 then (dirPos, angPos) else (dirNeg, angNeg)
   suffix = fromMaybe err $ precomputedNumericalReflectionSuffixes Seq.!? (abs n)
   err = error "number too large for numerical reflection"
 

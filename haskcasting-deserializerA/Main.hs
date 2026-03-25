@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 
@@ -20,9 +21,6 @@ import Haskcasting.Compound.Hexcasting (mergeTopN)
 import Haskcasting.Patterns.Hexcasting
 import Haskcasting.Patterns.Hexical
 import Haskcasting.Patterns.Moreiotas
-
-castExecIdPair :: forall a x y s. Fragment (x ': y ': s) (IotaExec a a ': IotaExec a a ': s)
-castExecIdPair = fragVeryUnsafeCast
 
 popInst :: Fragment as (IotaString ': as)
 popInst =
@@ -181,7 +179,7 @@ bootstrap0 =
 bootstrap1 :: Fragment '[IotaString] '[]
 bootstrap1 =
   fragAssertStack @'[IotaString]
-    +.+ embedConsideration (iotaBookkeepersGambit @'[True]) -- semicolon placeholder
+    +.+ embedConsideration (iotaBookkeepersGambit [True]) -- semicolon placeholder
     +.+ fragUnsafeCast @'[IotaString]
     +.+ fragSeparationDistillation
     +.+ fragHuginnsGambit
@@ -204,8 +202,8 @@ bootstrap1 =
       +.+ fragGeminiDecomposition
       +.+ fragAugursPurification
       +.+ fragVacantReflection
-      +.+ embedIntroRetro (fragAsList $ fragBookkeepersGambit @'[False, False] +.+ fragJanusGambit)
-      +.+ castExecIdPair @'[IotaString, IotaAnyList]
+      +.+ fragUnsafeCast @'[IotaExecId '[IotaString, IotaAnyList]]
+      +.+ embedIntroRetro (fragAsIota $ fragBookkeepersGambit @'[False, False] +.+ fragJanusGambit)
       +.+ fragAugursExaltation
       +.+ fragHermesGambit
       +.+ fragInputPurification
@@ -216,7 +214,7 @@ bootstrap1 =
 deserializer :: Fragment '[IotaString] '[]
 deserializer =
   fragAssertStack @'[IotaString]
-    +.+ embedConsideration (iotaBookkeepersGambit @'[True]) -- semicolon placeholder
+    +.+ embedConsideration (iotaBookkeepersGambit [True]) -- semicolon placeholder
     +.+ fragUnsafeCast @'[IotaString]
     +.+ fragSeparationDistillation
     +.+ fragHuginnsGambit
@@ -247,8 +245,8 @@ deserializer =
       +.+ fragGeminiDecomposition
       +.+ fragAugursPurification
       +.+ fragVacantReflection
-      +.+ embedIntroRetro (fragAsList $ fragBookkeepersGambit @'[False, False] +.+ fragJanusGambit)
-      +.+ castExecIdPair @'[IotaString, IotaAnyList]
+      +.+ fragUnsafeCast @'[IotaExecId '[IotaString, IotaAnyList]]
+      +.+ embedIntroRetro (fragAsIota $ fragBookkeepersGambit @'[False, False] +.+ fragJanusGambit)
       +.+ fragAugursExaltation
       +.+ fragHermesGambit
       +.+ fragInputPurification
