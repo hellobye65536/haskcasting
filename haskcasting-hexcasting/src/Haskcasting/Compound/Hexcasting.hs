@@ -11,8 +11,12 @@ module Haskcasting.Compound.Hexcasting (
   hlistNth,
   fish,
   fishDup,
+  lehmerCodeMaxLen,
+  lehmerCode,
 ) where
 
+import Control.Monad (foldM, guard)
+import Data.List (elemIndex)
 import Data.Sequence qualified as Seq
 import GHC.Exts (proxy#)
 import GHC.TypeNats (KnownNat, natVal', type (-))
@@ -83,3 +87,19 @@ fishDup =
       [ iotaCast $ iotaNumericalReflection $ natValInt @n
       , iotaCast $ iotaFishermansGambitII
       ]
+
+lehmerCodeMaxLen :: Int
+lehmerCodeMaxLen = 12
+
+lehmerCode :: [Int] -> Maybe Int
+lehmerCode ps = do
+  let psl = length ps
+  guard $ psl <= lehmerCodeMaxLen
+  let facs = scanl (*) 1 [1 .. psl - 1]
+      elems_ = reverse [0 .. psl - 1]
+      step (!ret, elems) (x, fac) = do
+        i <- x `elemIndex` elems
+        let elems' = take i elems <> drop (i + 1) elems
+            ret' = ret + i * fac
+        pure $ (ret', elems')
+  fmap fst $ foldM step (0, elems_) $ reverse $ zip ps facs

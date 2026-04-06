@@ -11,17 +11,12 @@ author:             hellobye65536
 maintainer:         boshwang1234@gmail.com
 
 common common
-    hs-source-dirs:   src
     default-language: GHC2024
     build-depends:    base ^>= 4.20
     ghc-options:
         -Wall
 
-library
-    import:           common
-    hs-source-dirs:   src
-    exposed-modules:
-        Haskcasting.ExprLang
+common build-depends
     build-depends:
         haskcasting,
         haskcasting-hexcasting,
@@ -30,3 +25,25 @@ library
         vector,
         HList,
         mtl,
+        ilist,
+
+library
+    import:
+        common,
+        build-depends,
+    hs-source-dirs:   src
+    exposed-modules:
+        Haskcasting.ExprLang
+        Haskcasting.ExprLang.Ops
+
+test-suite ops
+    import:
+        common,
+        build-depends,
+    type:             exitcode-stdio-1.0
+    hs-source-dirs:   test
+    main-is:          Ops.hs
+    build-depends:
+        hspec,
+        QuickCheck,
+        haskcasting-exprlang,

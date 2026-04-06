@@ -1,8 +1,6 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE OverloadedLists #-}
-{-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeFamilyDependencies #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -14,6 +12,7 @@ module Haskcasting.ExprLang (
   call,
   lambdaCall,
   (+|+),
+  exprToFrag,
   ExprBlockT,
   ExprBlockM,
   block,
@@ -23,12 +22,12 @@ module Haskcasting.ExprLang (
   blockBind,
   blockBindTup,
   --
-  lowerBlockState,
+  -- lowerBlockState,
 ) where
 
 import Control.Monad (forM_)
 import Control.Monad.ST (ST, runST)
-import Control.Monad.State.Strict (MonadState (get), StateT, execStateT, modify')
+import Control.Monad.State.Strict (MonadState (get), MonadTrans (lift), StateT, execStateT, modify')
 import Data.Functor.Identity (Identity (runIdentity))
 import Data.HList (
   HAppendListR,
@@ -38,18 +37,23 @@ import Data.HList (
  )
 import Data.Kind (Type)
 import Data.Maybe (fromMaybe)
-import Data.STRef (STRef, modifySTRef', newSTRef, readSTRef, writeSTRef)
+import Data.STRef (
+  STRef,
+  modifySTRef',
+  newSTRef,
+  readSTRef,
+  writeSTRef,
+ )
 import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
 import Data.Vector.Unboxed.Mutable qualified as VUM
 import GHC.TypeLits (KnownNat)
 import Haskcasting.Compound.Hexcasting (natValInt)
 import Haskcasting.Embed (iotaConsideration)
+import Haskcasting.ExprLang.Ops (Fish (..), Op (..), StackOp (..), lowerOps, optOps)
 import Haskcasting.Fragment (Fragment (Fragment))
-import Haskcasting.Iota (IotaAny, IotaCast (iotaCast), IotaExec, IotaList, IotaNumber)
+import Haskcasting.Iota (IotaAny, IotaCast (iotaCast), IotaExec)
 import Haskcasting.Patterns.Hexcasting (
-  FragGeminiDecomposition (fragGeminiDecomposition),
-  fragNumericalReflection,
   iotaBookkeepersGambit,
   iotaFlocksDisintegration,
   iotaFlocksGambit,
@@ -98,6 +102,11 @@ lambdaCall (Expr fun) (Expr arg) = Expr $ LambdaCall fun arg $ hListLen @b
 infixr 6 +|+
 (+|+) :: Expr blk a -> Expr blk b -> Expr blk (HAppendListR a b)
 Expr a +|+ Expr b = Expr $ Merge a b
+
+exprToFrag :: forall s xs. Expr () xs -> Fragment s (HAppendListR xs s)
+exprToFrag (Expr expr) = Fragment $ lowerOps $ execLowerM $ lowerExpr noVar noVar expr
+ where
+  noVar = error "expected no variables in expression"
 
 data BlockState = BlockState
   { bsBindings :: [(RawExpr, Int)]
@@ -178,10 +187,10 @@ block ::
   , MkExprVars inits
   , HListLen inits
   ) =>
-  (forall blk. HList (ExprSplit blk inits) -> ExprBlockM blk (Expr blk ret)) ->
   Expr blk' cap ->
+  (forall blk. HList (ExprSplit blk inits) -> ExprBlockM blk (Expr blk ret)) ->
   Expr blk' '[IotaExec (HAppendListR arg s) (HAppendListR ret s)]
-block blk cap = runIdentity $ blockT @cap @arg @ret @s blk cap
+block cap blk = runIdentity $ blockT @cap @arg @ret @s cap blk
 
 blockTup ::
   forall cap arg ret s inits blk'.
@@ -193,10 +202,10 @@ blockTup ::
   , HListLen inits
   , ExprSplitTuple inits
   ) =>
-  (forall blk. HTuple (ExprSplit blk inits) -> ExprBlockM blk (Expr blk ret)) ->
   Expr blk' cap ->
+  (forall blk. HTuple (ExprSplit blk inits) -> ExprBlockM blk (Expr blk ret)) ->
   Expr blk' '[IotaExec (HAppendListR arg s) (HAppendListR ret s)]
-blockTup blk cap = runIdentity $ blockT @cap @arg @ret @s blk' cap
+blockTup cap blk = runIdentity $ blockT @cap @arg @ret @s cap blk'
  where
   blk' :: forall blk. HList (ExprSplit blk inits) -> ExprBlockM blk (Expr blk ret)
   blk' = blk . exprSplitTuple @inits @blk
@@ -211,10 +220,10 @@ blockT ::
   , MkExprVars inits
   , HListLen inits
   ) =>
-  (forall blk. HList (ExprSplit blk inits) -> ExprBlockT blk m (Expr blk ret)) ->
   Expr blk' cap ->
+  (forall blk. HList (ExprSplit blk inits) -> ExprBlockT blk m (Expr blk ret)) ->
   m (Expr blk' '[IotaExec (HAppendListR arg s) (HAppendListR ret s)])
-blockT blk (Expr cap) = do
+blockT (Expr cap) blk = do
   let blk' = fmap unwrapExpr $ blk @() $ mkExprVars @inits @() 0
   ops <- lowerBlockT (hListLen @cap) (hListLen @arg) (hListLen @ret) blk'
   let ops' = optOps ops
@@ -227,7 +236,7 @@ blockT blk (Expr cap) = do
     1 -> Call [iotaCast iotaSurgeonsExaltation] exprCap 1
     _ ->
       Call
-        [ iotaCast $ iotaNumericalReflection $ hListLen @cap
+        [ iotaCast $ iotaNumericalReflection (hListLen @cap)
         , iotaCast iotaFlocksGambit
         , iotaCast iotaSurgeonsExaltation
         ]
@@ -245,10 +254,10 @@ blockTupT ::
   , HListLen inits
   , ExprSplitTuple inits
   ) =>
-  (forall blk. HTuple (ExprSplit blk inits) -> ExprBlockT blk m (Expr blk ret)) ->
   Expr blk' cap ->
+  (forall blk. HTuple (ExprSplit blk inits) -> ExprBlockT blk m (Expr blk ret)) ->
   m (Expr blk' '[IotaExec (HAppendListR arg s) (HAppendListR ret s)])
-blockTupT blk cap = blockT @cap @arg @ret @s blk' cap
+blockTupT cap blk = blockT @cap @arg @ret @s cap blk'
  where
   blk' :: forall blk. HList (ExprSplit blk inits) -> ExprBlockT blk m (Expr blk ret)
   blk' = blk . exprSplitTuple @inits @blk
@@ -270,44 +279,7 @@ blockBindTup ::
   ExprBlockT blk m (HTuple (ExprSplit blk xs))
 blockBindTup = fmap (exprSplitTuple @xs @blk) . blockBind
 
--- exprToFrag :: forall s xs. Expr () xs -> Fragment s (HAppendListR xs s)
--- exprToFrag (Expr expr) = runST $ lowerExpr noVar noVar expr
---   where noVar = error "expected no variables in expression"
---         ops = 
-
-data Perm = Perm {permDepth :: Int, permPerm :: [Int]}
-  deriving (Show)
-data Op = OpPerm Perm | OpFunc AnySeq Int Int
-
-instance Semigroup Perm where
-  l@(Perm _ld lp) <> r@(Perm rd _rp) = Perm ld' $ map (lp' !!) rp'
-   where
-    Perm ld' lp' = extendPerm (rd - length lp) l
-    Perm _rd' rp' = extendPerm (length lp' - rd) r
-
-instance Monoid Perm where
-  mempty = Perm 0 []
-
-permFish, permFishDup :: Int -> Perm
-permFish 0 = mempty
-permFish i = Perm (i + 1) (i : [0 .. i - 1])
-permFishDup i = Perm (i + 1) (i : [0 .. i])
-
-trimPerm :: Perm -> Perm
-trimPerm (Perm depth_ perm_) = foldr go (Perm depth_ []) $ zip perm_ runningMax
- where
-  runningMax = scanl max (-1) perm_
-  go (p, m) (Perm !depth [])
-    | p > m && p == depth - 1 = Perm (depth - 1) []
-  go (p, _m) (Perm depth ps) = Perm depth (p : ps)
-
-extendPerm :: Int -> Perm -> Perm
-extendPerm n (Perm d p) =
-  if n <= 0
-    then Perm d p
-    else Perm (d + n) (p <> [d .. d + n - 1])
-
-lowerBlockT :: forall m blk. Monad m => Int -> Int -> Int -> ExprBlockT blk m RawExpr -> m (Seq Op)
+lowerBlockT :: forall m blk. Monad m => Int -> Int -> Int -> ExprBlockT blk m RawExpr -> m [Op]
 lowerBlockT capL argL retL blk = fmap lowerBlockState $ flip execStateT blockStateDefault $ unwrapExprBlockT $ do
   pushBsBinding (Intro capsInsts $ argL + capL, argL + capL)
   expr <- blk
@@ -315,83 +287,156 @@ lowerBlockT capL argL retL blk = fmap lowerBlockState $ flip execStateT blockSta
  where
   capsInsts =
     case capL of
-      0 -> Seq.empty
+      0 -> []
       1 -> [iotaCast iotaConsideration, iotaCast $ iotaBookkeepersGambit [True]]
       _ -> [iotaCast iotaConsideration, iotaCast $ iotaBookkeepersGambit [True], iotaCast iotaFlocksDisintegration]
 
-lowerBlockState :: BlockState -> Seq Op
-lowerBlockState BlockState {bsBindings = binds, bsBindingLen = varCnt} = runST $ do
-  os <- newSTRef Seq.empty
-  varUseCnts <- VUM.replicate varCnt (0 :: Int)
+newtype LowerM s a = LowerM (StateT [Op] (ST s) a)
+  deriving (Functor, Applicative, Monad)
+
+liftLower :: ST s a -> LowerM s a
+liftLower = LowerM . lift
+
+execLowerM :: forall a. (forall s. LowerM s a) -> [Op]
+execLowerM st = reverse $ runST $ inner st
+ where
+  inner :: forall s'. LowerM s' a -> ST s' [Op]
+  inner (LowerM st') = execStateT st' []
+
+lowerOp :: Op -> LowerM s ()
+lowerOp op = LowerM $ modify' (op :)
+
+lowerBlockState :: BlockState -> [Op]
+lowerBlockState BlockState {bsBindings = binds, bsBindingLen = varCnt} = execLowerM $ do
+  varUseCnts <- liftLower $ VUM.replicate varCnt (0 :: Int)
   let cntExprVar = \case
         Intro _is _len -> pure ()
         Call _fun arg _len -> cntExprVar arg
         LambdaCall fun arg _len -> cntExprVar fun *> cntExprVar arg
         Merge l r -> cntExprVar l *> cntExprVar r
         Var v -> VUM.modify varUseCnts (+ 1) v
-  forM_ binds (cntExprVar . fst)
+  liftLower $ forM_ binds (cntExprVar . fst)
 
-  vars <- newSTRef 0
-  varStack <- newSTRef Seq.empty
+  vars <- liftLower $ newSTRef 0
+  varStack <- liftLower $ newSTRef Seq.empty
   forM_ binds $ \(expr, bindLen) -> do
-    os' <- lowerExpr varUseCnts varStack expr
-    modifySTRef' os (<> os')
+    lowerExpr varUseCnts varStack expr
 
-    vars' <- readSTRef vars
-    modifySTRef' vars (+ bindLen)
-    modifySTRef' varStack $ (Seq.fromFunction bindLen (subtract 1 . (bindLen -) . (+ vars')) <>)
-  readSTRef os
+    vars' <- liftLower $ readSTRef vars
+    liftLower $ modifySTRef' vars (+ bindLen)
+    -- [bindLen - 1 .. 0] + vars'
+    let newBinds = Seq.fromFunction bindLen (subtract 1 . (bindLen -) . (+ vars'))
+    liftLower $ modifySTRef' varStack $ (newBinds <>)
 
-lowerExpr :: VUM.MVector s Int -> STRef s (Seq Int) -> RawExpr -> ST s (Seq Op)
+lowerExpr :: VUM.MVector s Int -> STRef s (Seq Int) -> RawExpr -> LowerM s ()
 lowerExpr varUseCnts varStack expr = do
-  off <- newSTRef 0
+  off <- liftLower $ newSTRef 0
   let go = \case
         Intro is' len -> do
-          modifySTRef' off (+ len)
-          pure $ Seq.singleton $ OpFunc is' 0 len
+          liftLower $ modifySTRef' off (+ len)
+          lowerOp $ OpFunc is' 0 len
         Call fun arg len -> do
-          arg' <- go arg
-          off' <- readSTRef off
-          writeSTRef off len
-          pure (arg' Seq.|> OpFunc fun off' len)
+          go arg
+          off' <- liftLower $ readSTRef off
+          liftLower $ writeSTRef off len
+          lowerOp $ OpFunc fun off' len
         LambdaCall fun arg len -> do
-          arg' <- go arg
-          fun' <- go fun
-          off' <- readSTRef off
-          writeSTRef off len
-          pure $ arg' <> fun' Seq.|> OpFunc [iotaCast iotaHermesGambit] off' len
+          go arg
+          go fun
+          off' <- liftLower $ readSTRef off
+          liftLower $ writeSTRef off len
+          lowerOp $ OpFunc [iotaCast iotaHermesGambit] off' len
         Merge l r -> liftA2 (<>) (go r) (go l)
         Var v -> do
-          uses <- VUM.read varUseCnts v
-          off' <- readSTRef off
-          vars' <- readSTRef varStack
+          uses <- liftLower $ VUM.read varUseCnts v
+          off' <- liftLower $ readSTRef off
+          vars' <- liftLower $ readSTRef varStack
           let vind = fromMaybe (error "missing variable in stack") $ v `Seq.elemIndexL` vars'
-          perm <-
+          stackOp <-
             if
               | uses <= 0 -> error "somehow got to zero uses"
               | uses == 1 -> do
-                  writeSTRef varStack $ Seq.deleteAt vind vars'
-                  pure $ permFish (vind + off')
-              | otherwise -> pure $ permFishDup (vind + off')
-          VUM.modify varUseCnts (subtract 1) v
-          pure $ Seq.singleton $ OpPerm perm
+                  liftLower $ writeSTRef varStack $ Seq.deleteAt vind vars'
+                  pure $ OpFish $ Fish (vind + off')
+              | otherwise -> pure $ OpFish $ FishDup (vind + off')
+          liftLower $ VUM.modify varUseCnts (subtract 1) v
+          lowerOp $ OpStack stackOp
   go expr
 
-foo =
-  let n = intro @'[_] $ fragNumericalReflection 0
-      blk :: (Expr blk '[IotaNumber], Expr blk '[IotaList IotaNumber]) -> ExprBlockM blk (Expr blk '[])
-      blk = \(c, a) -> do
-        (c', c'') <- blockBindTup $ call @'[_, _] fragGeminiDecomposition c
-        _
-   in blockTup @'[IotaNumber] @'[IotaList IotaNumber] @'[] blk n
+-- lowerBlockState :: BlockState -> Seq Op
+-- lowerBlockState BlockState {bsBindings = binds, bsBindingLen = varCnt} = runST $ do
+--   os <- newSTRef Seq.empty
+--   varUseCnts <- VUM.replicate varCnt (0 :: Int)
+--   let cntExprVar = \case
+--         Intro _is _len -> pure ()
+--         Call _fun arg _len -> cntExprVar arg
+--         LambdaCall fun arg _len -> cntExprVar fun *> cntExprVar arg
+--         Merge l r -> cntExprVar l *> cntExprVar r
+--         Var v -> VUM.modify varUseCnts (+ 1) v
+--   forM_ binds (cntExprVar . fst)
 
-optOps :: Seq Op -> Seq Op
-optOps = undefined
+--   vars <- newSTRef 0
+--   varStack <- newSTRef Seq.empty
+--   forM_ binds $ \(expr, bindLen) -> do
+--     os' <- lowerExpr varUseCnts varStack expr
+--     modifySTRef' os (<> os')
 
-lowerPerm :: Perm -> AnySeq
-lowerPerm = undefined
+--     vars' <- readSTRef vars
+--     modifySTRef' vars (+ bindLen)
+--     modifySTRef' varStack $ (Seq.fromFunction bindLen (subtract 1 . (bindLen -) . (+ vars')) <>)
+--   readSTRef os
 
-lowerOps :: Seq Op -> AnySeq
-lowerOps ops = flip foldMap ops $ \case
-  OpPerm perm -> lowerPerm perm
-  OpFunc insts _ _ -> insts
+-- lowerExpr :: VUM.MVector s Int -> STRef s (Seq Int) -> RawExpr -> ST s (Seq Op)
+-- lowerExpr varUseCnts varStack expr = do
+--   off <- newSTRef 0
+--   let go = \case
+--         Intro is' len -> do
+--           modifySTRef' off (+ len)
+--           pure $ Seq.singleton $ OpFunc is' 0 len
+--         Call fun arg len -> do
+--           arg' <- go arg
+--           off' <- readSTRef off
+--           writeSTRef off len
+--           pure (arg' Seq.|> OpFunc fun off' len)
+--         LambdaCall fun arg len -> do
+--           arg' <- go arg
+--           fun' <- go fun
+--           off' <- readSTRef off
+--           writeSTRef off len
+--           pure $ arg' <> fun' Seq.|> OpFunc [iotaCast iotaHermesGambit] off' len
+--         Merge l r -> liftA2 (<>) (go r) (go l)
+--         Var v -> do
+--           uses <- VUM.read varUseCnts v
+--           off' <- readSTRef off
+--           vars' <- readSTRef varStack
+--           let vind = fromMaybe (error "missing variable in stack") $ v `Seq.elemIndexL` vars'
+--           perm <-
+--             if
+--               | uses <= 0 -> error "somehow got to zero uses"
+--               | uses == 1 -> do
+--                   writeSTRef varStack $ Seq.deleteAt vind vars'
+--                   pure $ permFish (vind + off')
+--               | otherwise -> pure $ permFishDup (vind + off')
+--           VUM.modify varUseCnts (subtract 1) v
+--           pure $ Seq.singleton $ OpPerm perm
+--   go expr
+
+-- -- foo =
+-- --   let n = intro @'[_] $ fragNumericalReflection 0
+-- --    in blockTup @'[IotaNumber] @'[IotaList IotaNumber] @'[] n $ \(c, a) -> do
+-- --         (c', c'') <- blockBindTup $ call @'[_, _] fragGeminiDecomposition c
+-- --         _
+
+-- optOps = _
+-- lowerOps = _
+
+-- -- optOps :: Seq Op -> Seq Op
+-- -- optOps = undefined
+
+-- -- lowerPerm :: Perm -> AnySeq
+-- -- lowerPerm = undefined
+
+-- -- lowerOps :: Seq Op -> AnySeq
+-- -- lowerOps ops = flip foldMap ops $ \case
+-- --   OpPerm perm -> lowerPerm perm
+-- --   OpFunc insts _ _ -> insts
