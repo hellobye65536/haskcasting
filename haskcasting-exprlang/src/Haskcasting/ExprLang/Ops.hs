@@ -1,39 +1,48 @@
+{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE OverloadedLists #-}
+{-# LANGUAGE ViewPatterns #-}
 
 module Haskcasting.ExprLang.Ops (
   Perm (..),
   permEmpty,
   permTrim,
   permExtend,
+  permDeepen,
   permBookkeepers,
   decomposePermBookkeepers,
   Fish (..),
   permFish,
   decomposePerm,
   StackOp (..),
+  FuncOp (..),
   Op (..),
-  optOps,
+  optimizeOps,
+  optimizePerm,
   lowerOps,
 ) where
 
-import Control.Monad (forM_, void)
+import Control.Monad (foldM_, forM_, void)
 import Control.Monad.Except (runExceptT, throwError)
-import Control.Monad.ST (runST)
+import Control.Monad.Reader (MonadTrans (lift), ReaderT (runReaderT), ask)
+import Control.Monad.ST (ST, runST)
 import Data.Bool (bool)
+import Data.Foldable (Foldable (toList), fold)
+import Data.Function (on)
 import Data.Functor (($>))
-import Data.List.Index (iall)
-import Data.List.NonEmpty (NonEmpty ((:|)))
+import Data.List (groupBy, tails)
+import Data.List.Index (iall, iforM_, indexed)
+import Data.List.NonEmpty qualified as NE
 import Data.STRef (newSTRef, readSTRef, writeSTRef)
 import Data.Sequence (Seq)
+import Data.Sequence qualified as Seq
+import Data.Vector.Strict qualified as V
+import Data.Vector.Strict.Mutable qualified as VM
 import Data.Vector.Unboxed qualified as VU
 import Data.Vector.Unboxed.Mutable qualified as VUM
-import Haskcasting.Iota (IotaAny, IotaCast (iotaCast))
-import Haskcasting.Patterns.Hexcasting (
-  iotaBookkeepersGambit,
-  iotaFishermansGambit,
-  iotaFishermansGambitII,
-  iotaNumericalReflection,
- )
+import Haskcasting.Compound.Hexcasting (lehmerCode, lehmerCodeMaxLen)
+import Haskcasting.Embed (iotaConsideration)
+import Haskcasting.Iota (IotaAny, IotaCast (iotaCast), IotaNumber (IotaNumber))
+import Haskcasting.Patterns.Hexcasting
 
 type AnySeq = Seq IotaAny
 
@@ -70,6 +79,12 @@ permExtend n (Perm d p) =
     then Perm d p
     else Perm (d + n) (p <> [d .. d + n - 1])
 
+permDeepen :: Int -> Perm -> Perm
+permDeepen n (Perm d p) =
+  if n <= 0
+    then Perm d p
+    else Perm (d + n) (VU.map (+ n) p)
+
 permBookkeepers :: [Bool] -> Perm
 permBookkeepers keep = Perm (length keep) (VU.fromList $ map snd $ filter fst $ zip keep [0 ..])
 
@@ -93,9 +108,18 @@ data Fish = Fish Int | FishDup Int
   deriving (Show, Eq)
 
 permFish :: Fish -> Perm
-permFish (Fish 0) = permEmpty
-permFish (Fish i) = Perm (i + 1) (i `VU.cons` [0 .. i - 1])
-permFish (FishDup i) = Perm (i + 1) (i `VU.cons` [0 .. i])
+permFish (Fish i_) = case i_ `compare` 0 of
+  EQ -> permEmpty
+  LT -> Perm (i + 1) (i `VU.cons` [0 .. i - 1])
+  GT -> Perm (i + 1) ([1 .. i] `VU.snoc` 0)
+ where
+  i = abs i_
+permFish (FishDup i_) =
+  if i_ >= 0
+    then Perm (i + 1) (i `VU.cons` [0 .. i])
+    else Perm (i + 1) ([0 .. i] `VU.snoc` 0)
+ where
+  i = abs i_
 
 decomposePerm :: Perm -> ([Bool], [Fish])
 decomposePerm p_ = if VU.null p then (keep, []) else (keep, fishes)
@@ -126,6 +150,7 @@ decomposePerm p_ = if VU.null p then (keep, []) else (keep, fishes)
           stack <- readSTRef stackRef
           findRes <- runExceptT $ VUM.iforM_ stack $ \i v' -> if v == v' then throwError i else pure ()
           pure $ either id (error "missing element in stack") findRes
+
     let elided =
           let n = VU.last p
               ts = VU.drop (VU.length p - (n + 1)) p
@@ -152,114 +177,249 @@ data StackOp
   | OpPerm Perm
   deriving (Show, Eq)
 
-data Op = OpStack StackOp | OpFunc AnySeq Int Int
+data FuncOp = FuncOp AnySeq Int Int
 
-optOps :: [Op] -> [Op]
-optOps ops = undefined
+opToPerm :: StackOp -> Perm
+opToPerm (OpFish fish) = permFish fish
+opToPerm (OpBookkeeper keep) = permBookkeepers keep
+opToPerm (OpPerm perm) = perm
 
--- where
---  _ = _
+data Op = OpStack StackOp | OpFunc FuncOp
 
--- shiftedForward = foldr shiftForward [] ops
--- shiftForward fn@(OpFunc) = _
+optimizeOps :: Seq Op -> Seq Op
+optimizeOps = groupOps
 
--- optStackOps :: Seq StackOp ->
+groupOps :: Seq Op -> Seq Op
+groupOps = shiftRight 0 permEmpty Seq.empty . shiftLeft 0 permEmpty Seq.empty
+ where
+  -- shift stack ops left/right
+  shiftLeft off perm funcs = \case
+    Seq.Empty -> funcs
+    (OpStack op) Seq.:<| ops ->
+      let op' = permDeepen off $ opToPerm op
+       in shiftLeft off (perm <> op') funcs ops
+    op@(OpFunc (FuncOp _ off' 0)) Seq.:<| ops ->
+      shiftLeft (off + off') perm (funcs Seq.:|> op) ops
+    op@(OpFunc _) Seq.:<| ops ->
+      [OpStack $ OpPerm perm]
+        <> funcs
+        <> [op]
+        <> shiftLeft 0 permEmpty Seq.empty ops
+  shiftRight off perm funcs = \case
+    Seq.Empty -> funcs
+    ops Seq.:|> (OpStack op) ->
+      let op' = permDeepen off $ opToPerm op
+       in shiftRight off (op' <> perm) funcs ops
+    ops Seq.:|> op@(OpFunc (FuncOp _ 0 off')) ->
+      shiftRight (off + off') perm (op Seq.:<| funcs) ops
+    ops Seq.:|> op@(OpFunc _) ->
+      shiftRight 0 permEmpty Seq.empty ops
+        <> [op]
+        <> funcs
+        <> [OpStack $ OpPerm perm]
 
--- opt
+data Cost = Cost !Int !Int
+  deriving (Eq, Ord)
 
--- singlePatternPerms :: [(Perm, IotaPattern)]
--- singlePatternPerms =
---   [ (Perm 2 [1, 0], iotaJestersGambit)
---   , (Perm 3 [2, 0, 1], iotaCast iotaRotationGambit)
---   , (Perm 3 [1, 2, 0], iotaCast iotaRotationGambitII)
---   , (Perm 1 [0, 0], iotaCast iotaGeminiDecomposition)
---   , (Perm 2 [1, 0, 1], iotaCast iotaProspectorsGambit)
---   , (Perm 2 [0, 1, 0], iotaCast iotaUndertakersGambit)
---   , (Perm 2 [0, 1, 0, 1], iotaCast iotaDioscuriGambit)
---   ]
+instance Semigroup Cost where
+  Cost la lb <> Cost ra rb = Cost (la + ra) (lb + rb)
+instance Monoid Cost where
+  mempty = Cost 0 0
 
--- lowerPerm :: Perm -> AnySeq
--- lowerPerm perm = bk <> permIotas
---  where
---   (keep, perm') = splitPermBookkeepers perm
---   permIotas = case trimPerm perm' of
---     -- identity
---     Perm 0 [] -> Seq.empty
---     -- single patterns
---     perm''
---       | Just pat <- perm'' `lookup` singlePatternPerms ->
---           Seq.singleton $ iotaCast pat
---     -- dupN
---     Perm 1 p ->
---       Seq.fromList
---         [ iotaCast $ iotaNumericalReflection (length p)
---         , iotaCast iotaGeminiGambit
---         ]
---     -- fish
---     perm''@(Perm d _p)
---       | perm'' == permFish (d - 1) ->
---           Seq.fromList
---             [ iotaCast iotaConsideration
---             , iotaCast $ IotaNumber $ fromIntegral (d - 1)
---             , iotaCast iotaFishermansGambit
---             ]
---     -- fish dup
---     perm''@(Perm d _p)
---       | perm'' == permFishDup (d - 1) ->
---           Seq.fromList
---             [ iotaCast iotaConsideration
---             , iotaCast $ IotaNumber $ fromIntegral (d - 1)
---             , iotaCast iotaFishermansGambitII
---             ]
---     -- swindler's
---     Perm d p
---       | maximum p < d
---       , Just lehmer <- lehmerCode p ->
---           Seq.fromList
---             [ iotaCast iotaConsideration
---             , iotaCast $ IotaNumber $ fromIntegral lehmer
---             , iotaCast iotaSwindlersGambit
---             ]
---     -- tail permutation
---     Perm d p
---       | lp <- length p
---       , drop (lp - d) p == [0 .. d - 1] ->
---           _
---     -- list brute force
---     Perm d p ->
---       let rest = foldr go Seq.empty p
---           go i Seq.Empty =
---             Seq.fromList
---               [ iotaCast $ iotaNumericalReflection i
---               , iotaCast $ iotaSelectionDistillation
---               ]
---           go i s =
---             Seq.fromList
---               [ iotaCast $ iotaGeminiDecomposition
---               , iotaCast $ iotaNumericalReflection i
---               , iotaCast $ iotaSelectionDistillation
---               , iotaCast $ iotaJestersGambit
---               ]
---               <> s
---        in Seq.fromList
---             [ iotaCast $ iotaNumericalReflection d
---             , iotaCast $ iotaFlocksGambit
---             ]
---             <> rest
---   bk = case keep of
---     [] -> Seq.empty
---     (k : ks) -> Seq.singleton $ iotaCast $ iotaBookkeepersGambit (k :| ks)
+data PathCost = PathCost {pcSeq :: AnySeq, pcCost :: !Cost}
 
-lowerOps :: [Op] -> AnySeq
+instance Semigroup PathCost where
+  PathCost lis lc <> PathCost ris rc = PathCost (lis <> ris) (lc <> rc)
+instance Monoid PathCost where
+  mempty = PathCost mempty mempty
+instance Eq PathCost where
+  PathCost _ lc == PathCost _ rc = lc == rc
+instance Ord PathCost where
+  PathCost _ lc `compare` PathCost _ rc = lc `compare` rc
+
+newtype PeepholeM s a = PeepholeM (ReaderT (VM.MVector s [(Int, PathCost)]) (ST s) a)
+  deriving (Functor, Applicative, Monad)
+
+execPeepholeM :: Int -> (forall s. PeepholeM s a) -> V.Vector [(Int, PathCost)]
+execPeepholeM n st = V.create $ inner st
+ where
+  inner :: forall s a. PeepholeM s a -> ST s (VM.MVector s [(Int, PathCost)])
+  inner (PeepholeM st') = do
+    edges <- VM.replicate n []
+    void $ runReaderT st' edges
+    pure edges
+
+liftPeepholeST :: ST s a -> PeepholeM s a
+liftPeepholeST = PeepholeM . lift
+
+addEdge :: (Int, Int) -> PathCost -> PeepholeM s ()
+addEdge (u, v) pc = PeepholeM $ do
+  edges <- ask
+  lift $ VM.modify edges ((v, pc) :) u
+
+type Peephole s = [Fish] -> PeepholeM s ()
+
+peepholes :: [Peephole s]
+peepholes = [consecutive, swindlers]
+ where
+  consecutive fishes = do
+    let groups = NE.groupBy ((==) `on` snd) $ indexed fishes
+        pairs = zip groups $ drop 1 $ map toList groups ++ [[]]
+
+    forM_ pairs $ \case
+      (fs@((u, Fish f) NE.:| _), gs) -> do
+        let d = f + 1
+            v = (1 +) $ fst $ NE.last fs
+        forM_ ([u .. v - 2] :: [Int]) $ \u' -> do
+          forM_ ([u' + 2 .. v] :: [Int]) $ \v' -> do
+            addEdge (u', v') $ pathRotation d (v' - u')
+
+        -- FishDup -f
+        case gs of
+          (((+ 1) -> v', FishDup f') : _)
+            | f == f' && (v' - u) >= d ->
+                addEdge (v' - d, v') $ pathFish $ FishDup (-f)
+          _ -> pure ()
+      (fs@((u, FishDup f) NE.:| _), _) -> do
+        let d = f + 1
+            v = (1 +) $ fst $ NE.last fs
+        forM_ ([u .. v - 2] :: [Int]) $ \u' -> do
+          forM_ ([u' + 2 .. v] :: [Int]) $ \v' -> do
+            addEdge (u', v') $ pathDupSlice d (v' - u')
+
+  swindlers fishes = do
+    let cmp (Fish l) (Fish r) = l <= lehmerCodeMaxLen && r <= lehmerCodeMaxLen
+        cmp _ _ = False
+        groups = NE.groupBy (cmp `on` snd) $ indexed fishes
+
+    forM_ groups $ \case
+      fs@((_, Fish f) NE.:| _) | f <= lehmerCodeMaxLen -> do
+        forM_ (NE.tails1 fs) $ \((u, f') NE.:| fs') -> do
+          (\go -> foldM_ go (permFish f') fs') $ \perm (v_, f'') -> do
+            let perm'@(Perm _ p) = perm <> permFish f''
+                v = v_ + 1
+            case lehmerCode $ VU.toList p of
+              Nothing -> pure ()
+              Just code ->
+                addEdge (u, v) $
+                  PathCost
+                    [ iotaCast iotaConsideration
+                    , iotaCast $ IotaNumber $ fromIntegral code
+                    , iotaCast iotaSwindlersGambit
+                    ]
+                    (Cost 3 2)
+            pure perm'
+      _ -> pure ()
+
+pathFish :: Fish -> PathCost
+pathFish (Fish i_) = case i_ of
+  0 -> mempty
+  1 -> PathCost [iotaCast iotaJestersGambit] (Cost 1 0)
+  2 -> PathCost [iotaCast iotaRotationGambit] (Cost 1 0)
+  -2 -> PathCost [iotaCast iotaRotationGambitII] (Cost 1 0)
+  i ->
+    PathCost
+      [ iotaCast $ iotaNumericalReflection i
+      , iotaCast iotaFishermansGambit
+      ]
+      (Cost 2 1)
+pathFish (FishDup i_) = case i_ of
+  0 -> PathCost [iotaCast iotaGeminiDecomposition] (Cost 1 0)
+  1 -> PathCost [iotaCast iotaProspectorsGambit] (Cost 1 0)
+  -1 -> PathCost [iotaCast iotaUndertakersGambit] (Cost 1 0)
+  i ->
+    PathCost
+      [ iotaCast $ iotaNumericalReflection i
+      , iotaCast iotaFishermansGambitII
+      ]
+      (Cost 2 1)
+
+pathBookkeeper :: [Bool] -> PathCost
+pathBookkeeper keep = case NE.nonEmpty keep of
+  Nothing -> mempty
+  Just keep' ->
+    PathCost
+      [iotaCast $ iotaBookkeepersGambit keep']
+      (Cost 1 0)
+
+-- 0,1,2,3,4    1,2,3,4,0
+--   \__n__/ -> \__n__/
+-- \___d___/    \___d___/
+pathRotation :: Int -> Int -> PathCost
+pathRotation 0 _ = mempty
+pathRotation d n_ =
+  (fold $ replicate n $ pathFish $ Fish (d - 1))
+    `min` (fold $ replicate (d - n) $ pathFish $ Fish (-(d - 1)))
+ where
+  n = n_ `rem` d
+
+-- chunked rotation, todo
+-- 0,1,2,3 -2> [0,1],2,3 -2> [[0,1],2,3] -1> [0,1],[2,3] -1> [2,3],[0,1] -1> [2,3,0,1] -1> 2,3,0,1
+-- 0,1,2,3 -2> [0,1],2,3 -2> 2,3,[0,1] -2> [2,3],[0,1] -> ...
+
+-- 0,1,2,3,4    1,2,3,4,0,1,2,3,4
+--   \__n__/ -> \__n__/
+-- \___d___/            \___d___/
+--
+--     0,1,2,3,4    3,4,0,1,2,3,4,0,1,2,3,4
+-- \_____n_____/ -> \_____n_____/
+--     \___d___/                  \___d___/
+pathDupSlice :: Int -> Int -> PathCost
+pathDupSlice 0 _ = mempty
+pathDupSlice d 1 = pathFish $ FishDup (d - 1)
+pathDupSlice 1 n =
+  PathCost
+    [ iotaCast $ iotaNumericalReflection (n + 1)
+    , iotaCast iotaGeminiGambit
+    ]
+    (Cost 2 1)
+pathDupSlice 2 2 = PathCost [iotaCast iotaDioscuriGambit] (Cost 1 0)
+-- too lazy to do list-based dup
+-- pathDupSlice d n | n < d = fold $ replicate n $ pathFish $ FishDup (d - 1)
+pathDupSlice d n = fold $ replicate n $ pathFish $ FishDup (d - 1)
+
+optimizePerm :: Perm -> (AnySeq, Cost)
+optimizePerm perm = runST $ do
+  let (keep, fishes) = decomposePerm perm
+      (bk, bkc) = case NE.nonEmpty keep of
+        Nothing -> ([], mempty)
+        Just keep' -> ([iotaCast $ iotaBookkeepersGambit keep'], Cost 1 0)
+      fl = length fishes
+
+  let edges = execPeepholeM fl $ mapM_ ($ fishes) peepholes
+
+  dp <- VM.replicate (fl + 1) (PathCost Seq.empty (Cost 1000000 0))
+  VM.write dp 0 mempty
+
+  iforM_ fishes $ \u fish -> do
+    p <- VM.read dp u
+    VM.modify dp (min (p <> pathFish fish)) (u + 1)
+    let edges' = edges V.! u
+    forM_ edges' $ \(v, p') -> do
+      VM.modify dp (min (p <> p')) v
+
+  PathCost is c <- VM.read dp fl
+  if c >= Cost 1000000 0
+    then error "didn't find path"
+    else pure (bk <> is, bkc <> c)
+
+optimizePermOp :: Op -> Op
+optimizePermOp (OpStack (OpPerm perm@(Perm d p))) =
+  let (is, _cost) = optimizePerm perm
+   in OpFunc $ FuncOp is d (VU.length p)
+optimizePermOp op = op
+
+seqFish :: Fish -> AnySeq
+seqFish = pcSeq . pathFish
+
+seqBookkeeper :: [Bool] -> AnySeq
+seqBookkeeper = pcSeq . pathBookkeeper
+
+lowerOps :: Foldable t => t Op -> AnySeq
 lowerOps ops = flip foldMap ops $ \case
-  OpStack (OpFish f) -> fish f
-  OpStack (OpBookkeeper ks) -> bookkeeper ks
+  OpStack (OpFish f) -> seqFish f
+  OpStack (OpBookkeeper ks) -> seqBookkeeper ks
   OpStack (OpPerm p) ->
     let (keep, fishes) = decomposePerm p
-     in bookkeeper keep <> foldMap fish fishes
-  OpFunc insts _ _ -> insts
- where
-  fish (Fish i) = [iotaCast $ iotaNumericalReflection i, iotaCast iotaFishermansGambit]
-  fish (FishDup i) = [iotaCast $ iotaNumericalReflection i, iotaCast iotaFishermansGambitII]
-  bookkeeper [] = []
-  bookkeeper (k : ks) = [iotaCast $ iotaBookkeepersGambit (k :| ks)]
+     in seqBookkeeper keep <> foldMap seqFish fishes
+  OpFunc (FuncOp insts _ _) -> insts

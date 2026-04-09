@@ -5,6 +5,7 @@ module Main (main) where
 
 import Data.Vector.Unboxed qualified as VU
 import Haskcasting.ExprLang.Ops (
+  Fish (..),
   Perm (Perm),
   decomposePerm,
   decomposePermBookkeepers,
@@ -16,7 +17,7 @@ import Haskcasting.ExprLang.Ops (
  )
 import Test.Hspec (hspec, shouldBe)
 import Test.Hspec.QuickCheck (prop)
-import Test.QuickCheck (Arbitrary (..), chooseInt, sized)
+import Test.QuickCheck (Arbitrary (..), Positive (Positive), chooseInt, sized, NonNegative (NonNegative))
 
 instance Arbitrary Perm where
   arbitrary = sized $ \pl -> do
@@ -60,3 +61,9 @@ main = hspec $ do
   prop "decomposePerm is correct" $ \(p :: Perm) ->
     let (keep, fishes) = decomposePerm p
      in permTrim (permBookkeepers keep <> foldMap permFish fishes) `shouldBe` permTrim p
+
+  prop "decomposePerm of permFish Fish" $ \(Positive n :: Positive Int) ->
+    decomposePerm (permFish $ Fish n) `shouldBe` ([], [Fish n])
+
+  prop "decomposePerm of permFish FishDup" $ \(NonNegative n :: NonNegative Int) ->
+    decomposePerm (permFish $ FishDup n) `shouldBe` ([], [FishDup n])

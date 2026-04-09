@@ -12,15 +12,18 @@ module Haskcasting.ExprLang (
   call,
   lambdaCall,
   (+|+),
-  exprToFrag,
   ExprBlockT,
   ExprBlockM,
+  blockBind,
+  blockBindTup,
   block,
   blockTup,
   blockT,
   blockTupT,
-  blockBind,
-  blockBindTup,
+  lambda,
+  lambdaTup,
+  lambdaT,
+  lambdaTupT,
   --
   -- lowerBlockState,
 ) where
@@ -50,7 +53,14 @@ import Data.Vector.Unboxed.Mutable qualified as VUM
 import GHC.TypeLits (KnownNat)
 import Haskcasting.Compound.Hexcasting (natValInt)
 import Haskcasting.Embed (iotaConsideration)
-import Haskcasting.ExprLang.Ops (Fish (..), Op (..), StackOp (..), lowerOps, optOps)
+import Haskcasting.ExprLang.Ops (
+  Fish (..),
+  FuncOp (..),
+  Op (..),
+  StackOp (..),
+  lowerOps,
+  optimizeOps,
+ )
 import Haskcasting.Fragment (Fragment (Fragment))
 import Haskcasting.Iota (IotaAny, IotaCast (iotaCast), IotaExec)
 import Haskcasting.Patterns.Hexcasting (
@@ -103,10 +113,7 @@ infixr 6 +|+
 (+|+) :: Expr blk a -> Expr blk b -> Expr blk (HAppendListR a b)
 Expr a +|+ Expr b = Expr $ Merge a b
 
-exprToFrag :: forall s xs. Expr () xs -> Fragment s (HAppendListR xs s)
-exprToFrag (Expr expr) = Fragment $ lowerOps $ execLowerM $ lowerExpr noVar noVar expr
- where
-  noVar = error "expected no variables in expression"
+-- ==== block typedefs
 
 data BlockState = BlockState
   { bsBindings :: [(RawExpr, Int)]
@@ -178,89 +185,7 @@ instance (HListLen xs, MkExprVars xs) => MkExprVars (x ': xs) where
   mkExprVars :: forall blk. Int -> HList (ExprSplit blk (x ': xs))
   mkExprVars off = Expr (Var $ off + hListLen @xs) `HCons` mkExprVars @xs @blk off
 
-block ::
-  forall cap arg ret s inits blk'.
-  ( HListLen cap
-  , HListLen arg
-  , HListLen ret
-  , HAppendListR cap arg ~ inits
-  , MkExprVars inits
-  , HListLen inits
-  ) =>
-  Expr blk' cap ->
-  (forall blk. HList (ExprSplit blk inits) -> ExprBlockM blk (Expr blk ret)) ->
-  Expr blk' '[IotaExec (HAppendListR arg s) (HAppendListR ret s)]
-block cap blk = runIdentity $ blockT @cap @arg @ret @s cap blk
-
-blockTup ::
-  forall cap arg ret s inits blk'.
-  ( HListLen cap
-  , HListLen arg
-  , HListLen ret
-  , HAppendListR cap arg ~ inits
-  , MkExprVars inits
-  , HListLen inits
-  , ExprSplitTuple inits
-  ) =>
-  Expr blk' cap ->
-  (forall blk. HTuple (ExprSplit blk inits) -> ExprBlockM blk (Expr blk ret)) ->
-  Expr blk' '[IotaExec (HAppendListR arg s) (HAppendListR ret s)]
-blockTup cap blk = runIdentity $ blockT @cap @arg @ret @s cap blk'
- where
-  blk' :: forall blk. HList (ExprSplit blk inits) -> ExprBlockM blk (Expr blk ret)
-  blk' = blk . exprSplitTuple @inits @blk
-
-blockT ::
-  forall cap arg ret s inits blk' m.
-  ( Monad m
-  , HListLen cap
-  , HListLen arg
-  , HListLen ret
-  , HAppendListR cap arg ~ inits
-  , MkExprVars inits
-  , HListLen inits
-  ) =>
-  Expr blk' cap ->
-  (forall blk. HList (ExprSplit blk inits) -> ExprBlockT blk m (Expr blk ret)) ->
-  m (Expr blk' '[IotaExec (HAppendListR arg s) (HAppendListR ret s)])
-blockT (Expr cap) blk = do
-  let blk' = fmap unwrapExpr $ blk @() $ mkExprVars @inits @() 0
-  ops <- lowerBlockT (hListLen @cap) (hListLen @arg) (hListLen @ret) blk'
-  let ops' = optOps ops
-      insts = lowerOps ops'
-
-  let exprBase = Intro insts 1
-      exprCap = cap `Merge` Intro [iotaCast $ iotaNumericalReflection 1] 1 `Merge` exprBase
-  pure $ Expr $ case (hListLen @cap) of
-    0 -> exprBase
-    1 -> Call [iotaCast iotaSurgeonsExaltation] exprCap 1
-    _ ->
-      Call
-        [ iotaCast $ iotaNumericalReflection (hListLen @cap)
-        , iotaCast iotaFlocksGambit
-        , iotaCast iotaSurgeonsExaltation
-        ]
-        exprCap
-        1
-
-blockTupT ::
-  forall cap arg ret s inits blk' m.
-  ( Monad m
-  , HListLen cap
-  , HListLen arg
-  , HListLen ret
-  , HAppendListR cap arg ~ inits
-  , MkExprVars inits
-  , HListLen inits
-  , ExprSplitTuple inits
-  ) =>
-  Expr blk' cap ->
-  (forall blk. HTuple (ExprSplit blk inits) -> ExprBlockT blk m (Expr blk ret)) ->
-  m (Expr blk' '[IotaExec (HAppendListR arg s) (HAppendListR ret s)])
-blockTupT cap blk = blockT @cap @arg @ret @s cap blk'
- where
-  blk' :: forall blk. HList (ExprSplit blk inits) -> ExprBlockT blk m (Expr blk ret)
-  blk' = blk . exprSplitTuple @inits @blk
+-- ==== block api
 
 blockBind ::
   forall xs blk m.
@@ -278,6 +203,152 @@ blockBindTup ::
   Expr blk xs ->
   ExprBlockT blk m (HTuple (ExprSplit blk xs))
 blockBindTup = fmap (exprSplitTuple @xs @blk) . blockBind
+
+block ::
+  forall arg ret s.
+  ( HListLen arg
+  , HListLen ret
+  , MkExprVars arg
+  , HListLen arg
+  ) =>
+  (forall blk. HList (ExprSplit blk arg) -> ExprBlockM blk (Expr blk ret)) ->
+  Fragment s (HAppendListR ret s)
+block blk = runIdentity $ blockT @arg @ret @s blk
+
+blockTup ::
+  forall arg ret s.
+  ( HListLen arg
+  , HListLen ret
+  , MkExprVars arg
+  , HListLen arg
+  , ExprSplitTuple arg
+  ) =>
+  (forall blk. HTuple (ExprSplit blk arg) -> ExprBlockM blk (Expr blk ret)) ->
+  Fragment s (HAppendListR ret s)
+blockTup blk = runIdentity $ blockT @arg @ret @s blk'
+ where
+  blk' :: forall blk. HList (ExprSplit blk arg) -> ExprBlockM blk (Expr blk ret)
+  blk' = blk . exprSplitTuple @arg @blk
+
+blockT ::
+  forall arg ret s m.
+  ( Monad m
+  , HListLen arg
+  , HListLen ret
+  , MkExprVars arg
+  , HListLen arg
+  ) =>
+  (forall blk. HList (ExprSplit blk arg) -> ExprBlockT blk m (Expr blk ret)) ->
+  m (Fragment s (HAppendListR ret s))
+blockT blk = do
+  let blk' = fmap unwrapExpr $ blk @() $ mkExprVars @arg @() 0
+  ops <- lowerBlockT 0 (hListLen @arg) (hListLen @ret) blk'
+  let ops' = optimizeOps $ Seq.fromList ops
+      insts = lowerOps ops'
+
+  pure $ Fragment insts
+
+blockTupT ::
+  forall arg ret s m.
+  ( Monad m
+  , HListLen arg
+  , HListLen ret
+  , MkExprVars arg
+  , HListLen arg
+  , ExprSplitTuple arg
+  ) =>
+  (forall blk. HTuple (ExprSplit blk arg) -> ExprBlockT blk m (Expr blk ret)) ->
+  m (Fragment s (HAppendListR ret s))
+blockTupT blk = blockT @arg @ret @s blk'
+ where
+  blk' :: forall blk. HList (ExprSplit blk arg) -> ExprBlockT blk m (Expr blk ret)
+  blk' = blk . exprSplitTuple @arg @blk
+
+lambda ::
+  forall cap arg ret s inits blk'.
+  ( HListLen cap
+  , HListLen arg
+  , HListLen ret
+  , HAppendListR cap arg ~ inits
+  , MkExprVars inits
+  , HListLen inits
+  ) =>
+  Expr blk' cap ->
+  (forall blk. HList (ExprSplit blk inits) -> ExprBlockM blk (Expr blk ret)) ->
+  Expr blk' '[IotaExec (HAppendListR arg s) (HAppendListR ret s)]
+lambda cap blk = runIdentity $ lambdaT @cap @arg @ret @s cap blk
+
+lambdaTup ::
+  forall cap arg ret s inits blk'.
+  ( HListLen cap
+  , HListLen arg
+  , HListLen ret
+  , HAppendListR cap arg ~ inits
+  , MkExprVars inits
+  , HListLen inits
+  , ExprSplitTuple inits
+  ) =>
+  Expr blk' cap ->
+  (forall blk. HTuple (ExprSplit blk inits) -> ExprBlockM blk (Expr blk ret)) ->
+  Expr blk' '[IotaExec (HAppendListR arg s) (HAppendListR ret s)]
+lambdaTup cap blk = runIdentity $ lambdaT @cap @arg @ret @s cap blk'
+ where
+  blk' :: forall blk. HList (ExprSplit blk inits) -> ExprBlockM blk (Expr blk ret)
+  blk' = blk . exprSplitTuple @inits @blk
+
+lambdaT ::
+  forall cap arg ret s inits blk' m.
+  ( Monad m
+  , HListLen cap
+  , HListLen arg
+  , HListLen ret
+  , HAppendListR cap arg ~ inits
+  , MkExprVars inits
+  , HListLen inits
+  ) =>
+  Expr blk' cap ->
+  (forall blk. HList (ExprSplit blk inits) -> ExprBlockT blk m (Expr blk ret)) ->
+  m (Expr blk' '[IotaExec (HAppendListR arg s) (HAppendListR ret s)])
+lambdaT (Expr cap) blk = do
+  let blk' = fmap unwrapExpr $ blk @() $ mkExprVars @inits @() 0
+  ops <- lowerBlockT (hListLen @cap) (hListLen @arg) (hListLen @ret) blk'
+  let ops' = optimizeOps $ Seq.fromList ops
+      insts = lowerOps ops'
+
+  let exprBase = Intro insts 1
+      exprCap = cap `Merge` Intro [iotaCast $ iotaNumericalReflection 1] 1 `Merge` exprBase
+  pure $ Expr $ case (hListLen @cap) of
+    0 -> exprBase
+    1 -> Call [iotaCast iotaSurgeonsExaltation] exprCap 1
+    _ ->
+      Call
+        [ iotaCast $ iotaNumericalReflection (hListLen @cap)
+        , iotaCast iotaFlocksGambit
+        , iotaCast iotaSurgeonsExaltation
+        ]
+        exprCap
+        1
+
+lambdaTupT ::
+  forall cap arg ret s inits blk' m.
+  ( Monad m
+  , HListLen cap
+  , HListLen arg
+  , HListLen ret
+  , HAppendListR cap arg ~ inits
+  , MkExprVars inits
+  , HListLen inits
+  , ExprSplitTuple inits
+  ) =>
+  Expr blk' cap ->
+  (forall blk. HTuple (ExprSplit blk inits) -> ExprBlockT blk m (Expr blk ret)) ->
+  m (Expr blk' '[IotaExec (HAppendListR arg s) (HAppendListR ret s)])
+lambdaTupT cap blk = lambdaT @cap @arg @ret @s cap blk'
+ where
+  blk' :: forall blk. HList (ExprSplit blk inits) -> ExprBlockT blk m (Expr blk ret)
+  blk' = blk . exprSplitTuple @inits @blk
+
+-- ==== block lowering
 
 lowerBlockT :: forall m blk. Monad m => Int -> Int -> Int -> ExprBlockT blk m RawExpr -> m [Op]
 lowerBlockT capL argL retL blk = fmap lowerBlockState $ flip execStateT blockStateDefault $ unwrapExprBlockT $ do
@@ -334,18 +405,18 @@ lowerExpr varUseCnts varStack expr = do
   let go = \case
         Intro is' len -> do
           liftLower $ modifySTRef' off (+ len)
-          lowerOp $ OpFunc is' 0 len
+          lowerOp $ OpFunc $ FuncOp is' 0 len
         Call fun arg len -> do
           go arg
           off' <- liftLower $ readSTRef off
           liftLower $ writeSTRef off len
-          lowerOp $ OpFunc fun off' len
+          lowerOp $ OpFunc $ FuncOp fun off' len
         LambdaCall fun arg len -> do
           go arg
           go fun
           off' <- liftLower $ readSTRef off
           liftLower $ writeSTRef off len
-          lowerOp $ OpFunc [iotaCast iotaHermesGambit] off' len
+          lowerOp $ OpFunc $ FuncOp [iotaCast iotaHermesGambit] off' len
         Merge l r -> liftA2 (<>) (go r) (go l)
         Var v -> do
           uses <- liftLower $ VUM.read varUseCnts v
