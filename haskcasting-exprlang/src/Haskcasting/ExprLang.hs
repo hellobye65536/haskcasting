@@ -212,7 +212,7 @@ block ::
   , HListLen arg
   ) =>
   (forall blk. HList (ExprSplit blk arg) -> ExprBlockM blk (Expr blk ret)) ->
-  Fragment s (HAppendListR ret s)
+  Fragment (HAppendListR arg s) (HAppendListR ret s)
 block blk = runIdentity $ blockT @arg @ret @s blk
 
 blockTup ::
@@ -224,7 +224,7 @@ blockTup ::
   , ExprSplitTuple arg
   ) =>
   (forall blk. HTuple (ExprSplit blk arg) -> ExprBlockM blk (Expr blk ret)) ->
-  Fragment s (HAppendListR ret s)
+  Fragment (HAppendListR arg s) (HAppendListR ret s)
 blockTup blk = runIdentity $ blockT @arg @ret @s blk'
  where
   blk' :: forall blk. HList (ExprSplit blk arg) -> ExprBlockM blk (Expr blk ret)
@@ -239,7 +239,7 @@ blockT ::
   , HListLen arg
   ) =>
   (forall blk. HList (ExprSplit blk arg) -> ExprBlockT blk m (Expr blk ret)) ->
-  m (Fragment s (HAppendListR ret s))
+  m (Fragment (HAppendListR arg s) (HAppendListR ret s))
 blockT blk = do
   let blk' = fmap unwrapExpr $ blk @() $ mkExprVars @arg @() 0
   ops <- lowerBlockT 0 (hListLen @arg) (hListLen @ret) blk'
@@ -258,7 +258,7 @@ blockTupT ::
   , ExprSplitTuple arg
   ) =>
   (forall blk. HTuple (ExprSplit blk arg) -> ExprBlockT blk m (Expr blk ret)) ->
-  m (Fragment s (HAppendListR ret s))
+  m (Fragment (HAppendListR arg s) (HAppendListR ret s))
 blockTupT blk = blockT @arg @ret @s blk'
  where
   blk' :: forall blk. HList (ExprSplit blk arg) -> ExprBlockT blk m (Expr blk ret)
