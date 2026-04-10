@@ -1,0 +1,49 @@
+cabal-version:      2.4
+name:               haskcasting-exprlang
+version:            0.1.0.0
+
+synopsis:           Expression language for Haskcasting
+description:        Expression language for Haskcasting
+
+license:            MIT
+license-file:       LICENSE
+author:             hellobye65536
+maintainer:         boshwang1234@gmail.com
+
+common common
+    default-language: GHC2024
+    build-depends:    base ^>= 4.20
+    ghc-options:
+        -Wall
+
+common build-depends
+    build-depends:
+        haskcasting,
+        haskcasting-hexcasting,
+        text,
+        containers,
+        vector,
+        HList,
+        mtl,
+        ilist,
+
+library
+    import:
+        common,
+        build-depends,
+    hs-source-dirs:   src
+    exposed-modules:
+        Haskcasting.ExprLang
+        Haskcasting.ExprLang.Ops
+
+test-suite ops
+    import:
+        common,
+        build-depends,
+    type:             exitcode-stdio-1.0
+    hs-source-dirs:   test
+    main-is:          Ops.hs
+    build-depends:
+        hspec,
+        QuickCheck,
+        haskcasting-exprlang,
