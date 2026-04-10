@@ -29,7 +29,6 @@ import Data.Bool (bool)
 import Data.Foldable (Foldable (toList), fold)
 import Data.Function (on)
 import Data.Functor (($>))
-import Data.List (groupBy, tails)
 import Data.List.Index (iall, iforM_, indexed)
 import Data.List.NonEmpty qualified as NE
 import Data.STRef (newSTRef, readSTRef, writeSTRef)
@@ -125,11 +124,14 @@ decomposePerm :: Perm -> ([Bool], [Fish])
 decomposePerm p_ = if VU.null p then (keep, []) else (keep, fishes)
  where
   (keep, Perm d p) = decomposePermBookkeepers p_
+  vumTakeEnd n v = VUM.drop (VUM.length v - n) v
+  vuTakeEnd n v = VU.drop (VU.length v - n) v
+  vuDropEnd n v = VU.take (VU.length v - n) v
   fishes = runST $ do
     stackBuf <- VUM.new (d + VU.length p)
     stackRef <-
       newSTRef =<< do
-        let stack = VUM.drop (VUM.length stackBuf - d) stackBuf
+        let stack = vumTakeEnd d stackBuf
         forM_ ([0 .. VUM.length stack - 1] :: [Int]) $ \i -> VUM.unsafeWrite stack i i
         pure stack
     let fish 0 = pure ()
@@ -143,7 +145,7 @@ decomposePerm p_ = if VU.null p then (keep, []) else (keep, fishes)
         fishDup i = do
           stack <- readSTRef stackRef
           v <- VUM.read stack i
-          let stack' = VUM.drop (VUM.length stackBuf - (VUM.length stack + 1)) stackBuf
+          let stack' = vumTakeEnd (VUM.length stack + 1) stackBuf
           writeSTRef stackRef stack'
           VUM.write stack' 0 v
         stackFind v = do
@@ -153,12 +155,12 @@ decomposePerm p_ = if VU.null p then (keep, []) else (keep, fishes)
 
     let elided =
           let n = VU.last p
-              ts = VU.drop (VU.length p - (n + 1)) p
+              ts = vuTakeEnd (n + 1) p
               doElide = iall (==) $ VU.toList ts
            in if doElide then n + 1 else 0
-        p' = VU.take (VU.length p - elided) p
+        p' = vuDropEnd elided p
     seen <- VUM.replicate d False
-    VU.forM_ (VU.drop (VU.length p - elided) p) $ \v -> VUM.write seen v True
+    VU.forM_ (vuTakeEnd elided p) $ \v -> VUM.write seen v True
 
     fmap reverse $ (\go -> VU.foldM' go [] $ VU.reverse p') $ \acc v -> do
       i <- stackFind v
