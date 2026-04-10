@@ -81,7 +81,38 @@ data RawExpr
   | Merge RawExpr RawExpr
   | Var Int
 
+instance Show RawExpr where
+  showsPrec p = \case
+    (Intro _f l) ->
+      showParen (p > 10) $
+        showString "Intro <seq> "
+          . showsPrec 11 l
+    (Call _f a l) ->
+      showParen (p > 10) $
+        showString "Call <seq> "
+          . showsPrec 11 a
+          . showString " "
+          . showsPrec 11 l
+    (LambdaCall f a l) ->
+      showParen (p > 10) $
+        showString "LambdaCall "
+          . showsPrec 11 f
+          . showString " "
+          . showsPrec 11 a
+          . showString " "
+          . showsPrec 11 l
+    (Merge l r) ->
+      showParen (p > 6) $
+        showsPrec 7 l
+          . showString " +|+ "
+          . showsPrec 6 r
+    (Var v) ->
+      showParen (p > 10) $
+        showString "Var "
+          . showsPrec 11 v
+
 data Expr (blk :: Type) (as :: [Type]) = Expr {unwrapExpr :: RawExpr}
+  deriving (Show)
 
 type HListLen xs = KnownNat (HNat2Nat (HLength xs))
 hListLen :: forall (xs :: [Type]). HListLen xs => Int
@@ -119,6 +150,7 @@ data BlockState = BlockState
   { bsBindings :: [(RawExpr, Int)]
   , bsBindingLen :: Int
   }
+  deriving (Show)
 
 blockStateDefault :: BlockState
 blockStateDefault = BlockState {bsBindings = [], bsBindingLen = 0}
@@ -199,7 +231,11 @@ blockBind (Expr expr) = do
 
 blockBindTup ::
   forall xs blk m.
-  (Monad m, HListLen xs, MkExprVars xs, ExprSplitTuple xs) =>
+  ( Monad m
+  , HListLen xs
+  , MkExprVars xs
+  , ExprSplitTuple xs
+  ) =>
   Expr blk xs ->
   ExprBlockT blk m (HTuple (ExprSplit blk xs))
 blockBindTup = fmap (exprSplitTuple @xs @blk) . blockBind
@@ -378,7 +414,9 @@ lowerOp :: Op -> LowerM s ()
 lowerOp op = LowerM $ modify' (op :)
 
 lowerBlockState :: BlockState -> [Op]
-lowerBlockState BlockState {bsBindings = binds, bsBindingLen = varCnt} = execLowerM $ do
+lowerBlockState bs = execLowerM $ do
+  let BlockState {bsBindings = binds_, bsBindingLen = varCnt} = bs
+      binds = reverse binds_
   varUseCnts <- liftLower $ VUM.replicate varCnt (0 :: Int)
   let cntExprVar = \case
         Intro _is _len -> pure ()
@@ -396,7 +434,7 @@ lowerBlockState BlockState {bsBindings = binds, bsBindingLen = varCnt} = execLow
     vars' <- liftLower $ readSTRef vars
     liftLower $ modifySTRef' vars (+ bindLen)
     -- [bindLen - 1 .. 0] + vars'
-    let newBinds = Seq.fromFunction bindLen (subtract 1 . (bindLen -) . (+ vars'))
+    let newBinds = Seq.fromFunction bindLen (bindLen - 1 + vars' -)
     liftLower $ modifySTRef' varStack $ (newBinds <>)
 
 lowerExpr :: VUM.MVector s Int -> STRef s (Seq Int) -> RawExpr -> LowerM s ()
