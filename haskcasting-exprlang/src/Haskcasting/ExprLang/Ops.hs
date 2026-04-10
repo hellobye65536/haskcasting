@@ -1,10 +1,10 @@
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE OverloadedLists #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ViewPatterns #-}
 
 module Haskcasting.ExprLang.Ops (
-  Perm (..),
-  permEmpty,
+  Perm (.., PermEmpty),
   permTrim,
   permExtend,
   permDeepen,
@@ -48,6 +48,9 @@ type AnySeq = Seq IotaAny
 data Perm = Perm Int (VU.Vector Int)
   deriving (Show, Eq)
 
+pattern PermEmpty :: Perm
+pattern PermEmpty = Perm 0 []
+
 instance Semigroup Perm where
   l@(Perm _ld lp) <> r@(Perm rd _rp) = Perm ld' $ VU.backpermute lp' rp'
    where
@@ -55,10 +58,7 @@ instance Semigroup Perm where
     Perm _rd' rp' = permExtend (VU.length lp' - rd) r
 
 instance Monoid Perm where
-  mempty = permEmpty
-
-permEmpty :: Perm
-permEmpty = Perm 0 []
+  mempty = PermEmpty
 
 permTrim :: Perm -> Perm
 permTrim (Perm depth perm) = go depth (VU.length perm - 1)
@@ -76,13 +76,13 @@ permExtend :: Int -> Perm -> Perm
 permExtend n (Perm d p) =
   if n <= 0
     then Perm d p
-    else Perm (d + n) (p <> [d .. d + n - 1])
+    else Perm (d + n) (p <> VU.generate n (+d))
 
 permDeepen :: Int -> Perm -> Perm
 permDeepen n (Perm d p) =
   if n <= 0
     then Perm d p
-    else Perm (d + n) (VU.map (+ n) p)
+    else Perm (d + n) (VU.generate n id <> VU.map (+ n) p)
 
 permBookkeepers :: [Bool] -> Perm
 permBookkeepers keep = Perm (length keep) (VU.fromList $ map snd $ filter fst $ zip keep [0 ..])
@@ -108,7 +108,7 @@ data Fish = Fish Int | FishDup Int
 
 permFish :: Fish -> Perm
 permFish (Fish i_) = case i_ `compare` 0 of
-  EQ -> permEmpty
+  EQ -> PermEmpty
   LT -> Perm (i + 1) (i `VU.cons` [0 .. i - 1])
   GT -> Perm (i + 1) ([1 .. i] `VU.snoc` 0)
  where
@@ -181,44 +181,56 @@ data StackOp
 
 data FuncOp = FuncOp AnySeq Int Int
 
+instance Show FuncOp where
+  showsPrec p (FuncOp _s i o) =
+    showParen (p > 10) $
+      showString "FuncOp <seq> "
+        . showsPrec 11 i
+        . showString " "
+        . showsPrec 11 o
+
 opToPerm :: StackOp -> Perm
 opToPerm (OpFish fish) = permFish fish
 opToPerm (OpBookkeeper keep) = permBookkeepers keep
 opToPerm (OpPerm perm) = perm
 
 data Op = OpStack StackOp | OpFunc FuncOp
+  deriving (Show)
 
 optimizeOps :: Seq Op -> Seq Op
-optimizeOps = groupOps
+optimizeOps = fmap optimizePermOp . groupOps
 
 groupOps :: Seq Op -> Seq Op
-groupOps = shiftRight 0 permEmpty Seq.empty . shiftLeft 0 permEmpty Seq.empty
+groupOps = shiftRight 0 PermEmpty Seq.empty . shiftLeft 0 PermEmpty Seq.empty
  where
+  opsPerm perm = case permTrim perm of
+    PermEmpty -> []
+    perm' -> [OpStack $ OpPerm perm']
   -- shift stack ops left/right
   shiftLeft off perm funcs = \case
-    Seq.Empty -> funcs
+    Seq.Empty -> opsPerm perm <> funcs
     (OpStack op) Seq.:<| ops ->
       let op' = permDeepen off $ opToPerm op
        in shiftLeft off (perm <> op') funcs ops
     op@(OpFunc (FuncOp _ off' 0)) Seq.:<| ops ->
       shiftLeft (off + off') perm (funcs Seq.:|> op) ops
     op@(OpFunc _) Seq.:<| ops ->
-      [OpStack $ OpPerm perm]
+      opsPerm perm
         <> funcs
         <> [op]
-        <> shiftLeft 0 permEmpty Seq.empty ops
+        <> shiftLeft 0 PermEmpty Seq.empty ops
   shiftRight off perm funcs = \case
-    Seq.Empty -> funcs
+    Seq.Empty -> funcs <> opsPerm perm
     ops Seq.:|> (OpStack op) ->
       let op' = permDeepen off $ opToPerm op
        in shiftRight off (op' <> perm) funcs ops
     ops Seq.:|> op@(OpFunc (FuncOp _ 0 off')) ->
       shiftRight (off + off') perm (op Seq.:<| funcs) ops
     ops Seq.:|> op@(OpFunc _) ->
-      shiftRight 0 permEmpty Seq.empty ops
+      shiftRight 0 PermEmpty Seq.empty ops
         <> [op]
         <> funcs
-        <> [OpStack $ OpPerm perm]
+        <> opsPerm perm
 
 data Cost = Cost !Int !Int
   deriving (Eq, Ord)

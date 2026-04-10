@@ -40,15 +40,15 @@ dupN =
       , iotaCast $ iotaGeminiGambit
       ]
 
-type family MergeTopNHList n as where
-  MergeTopNHList 0 as = '[]
-  MergeTopNHList n (a ': as) = a ': MergeTopNHList (n - 1) as
+type family MergeTopNHList n as acc where
+  MergeTopNHList 0 as acc = acc
+  MergeTopNHList n (a ': as) acc = MergeTopNHList (n - 1) as (a ': acc)
 
 type family MergeTopNStack n as where
   MergeTopNStack 0 as = as
   MergeTopNStack n (a ': as) = MergeTopNStack (n - 1) as
 
-mergeTopN :: forall n as. KnownNat n => Fragment as (IotaHList (MergeTopNHList n as) ': (MergeTopNStack n as))
+mergeTopN :: forall n as. KnownNat n => Fragment as (IotaHList (MergeTopNHList n as '[]) ': (MergeTopNStack n as))
 mergeTopN =
   Fragment $
     Seq.fromList

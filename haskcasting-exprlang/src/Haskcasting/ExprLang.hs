@@ -459,16 +459,17 @@ lowerExpr varUseCnts varStack expr = do
         Var v -> do
           uses <- liftLower $ VUM.read varUseCnts v
           off' <- liftLower $ readSTRef off
-          vars' <- liftLower $ readSTRef varStack
-          let vind = fromMaybe (error "missing variable in stack") $ v `Seq.elemIndexL` vars'
+          vars <- liftLower $ readSTRef varStack
+          let vind = fromMaybe (error "missing variable in stack") $ v `Seq.elemIndexL` vars
           stackOp <-
             if
               | uses <= 0 -> error "somehow got to zero uses"
               | uses == 1 -> do
-                  liftLower $ writeSTRef varStack $ Seq.deleteAt vind vars'
+                  liftLower $ writeSTRef varStack $ Seq.deleteAt vind vars
                   pure $ OpFish $ Fish (vind + off')
               | otherwise -> pure $ OpFish $ FishDup (vind + off')
           liftLower $ VUM.modify varUseCnts (subtract 1) v
+          liftLower $ writeSTRef off (off' + 1)
           lowerOp $ OpStack stackOp
   go expr
 
