@@ -6,11 +6,10 @@ module Main (main) where
 import Data.Vector.Unboxed qualified as VU
 import Haskcasting.ExprLang.Ops (
   Fish (..),
-  Perm (Perm),
+  Perm (Perm, PermEmpty),
   decomposePerm,
   decomposePermBookkeepers,
   permBookkeepers,
-  permEmpty,
   permExtend,
   permFish,
   permTrim,
@@ -23,13 +22,13 @@ instance Arbitrary Perm where
   arbitrary = sized $ \pl -> do
     d <- chooseInt (0, 16)
     if d == 0
-      then pure permEmpty
+      then pure PermEmpty
       else do
         p <- VU.replicateM pl (chooseInt (0, d - 1))
         pure $ Perm d p
 
   shrink (Perm 0 []) = []
-  shrink (Perm d p) = [permEmpty] <> shrinkD <> shrinkP
+  shrink (Perm d p) = [PermEmpty] <> shrinkD <> shrinkP
    where
     maxP = VU.foldl' max (-1) p
     shrinkD = [Perm d' p | d' <- [maxP + 1 .. d - 1]]
@@ -41,17 +40,17 @@ main = hspec $ do
     permTrim (permTrim p) `shouldBe` permTrim p
 
   prop "permTrim identity should be empty" $ \(n :: Int) ->
-    permTrim (permExtend n permEmpty) `shouldBe` Perm 0 []
+    permTrim (permExtend n PermEmpty) `shouldBe` Perm 0 []
 
   prop "permTrim (permExtend perm) `shouldBe` permTrim perm" $ \(p :: Perm, n :: Int) ->
     permTrim (permExtend n p) `shouldBe` permTrim p
 
   prop "perm <> identity `shouldBe` perm" $ \(p :: Perm, n :: Int) ->
-    let ident = permExtend n permEmpty
+    let ident = permExtend n PermEmpty
      in permTrim (p <> ident) `shouldBe` permTrim p
 
   prop "identity <> perm `shouldBe` perm" $ \(p :: Perm, n :: Int) ->
-    let ident = permExtend n permEmpty
+    let ident = permExtend n PermEmpty
      in permTrim (ident <> p) `shouldBe` permTrim p
 
   prop "decomposePermBookkeepers is correct" $ \(p :: Perm) ->

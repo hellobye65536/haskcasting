@@ -109,8 +109,8 @@ data Fish = Fish Int | FishDup Int
 permFish :: Fish -> Perm
 permFish (Fish i_) = case i_ `compare` 0 of
   EQ -> PermEmpty
-  LT -> Perm (i + 1) (i `VU.cons` [0 .. i - 1])
-  GT -> Perm (i + 1) ([1 .. i] `VU.snoc` 0)
+  GT -> Perm (i + 1) (i `VU.cons` [0 .. i - 1])
+  LT -> Perm (i + 1) ([1 .. i] `VU.snoc` 0)
  where
   i = abs i_
 permFish (FishDup i_) =
