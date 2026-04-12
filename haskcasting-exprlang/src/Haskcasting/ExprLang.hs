@@ -9,8 +9,12 @@ module Haskcasting.ExprLang (
   Expr,
   empty,
   intro,
+  introUnsafe,
   call,
+  callUnsafe,
   lambdaCall,
+  cast,
+  unsafeCast,
   (+|+),
   ExprBlockT,
   ExprBlockM,
@@ -24,8 +28,6 @@ module Haskcasting.ExprLang (
   lambdaTup,
   lambdaT,
   lambdaTupT,
-  --
-  -- lowerBlockState,
 ) where
 
 import Control.Monad (foldM_, forM_)
@@ -123,7 +125,10 @@ empty :: Expr blk '[]
 empty = Expr $ Intro Seq.empty 0
 
 intro :: forall a blk. HListLen a => (forall s. Fragment s (HAppendListR a s)) -> Expr blk a
-intro (Fragment is) = Expr $ Intro is $ hListLen @a
+intro (Fragment is) = introUnsafe is
+
+introUnsafe :: forall a blk. HListLen a => AnySeq -> Expr blk a
+introUnsafe is = Expr $ Intro is $ hListLen @a
 
 call ::
   forall b a blk.
@@ -131,10 +136,18 @@ call ::
   (forall s. Fragment (HAppendListR a s) (HAppendListR b s)) ->
   Expr blk a ->
   Expr blk b
-call (Fragment fun) (Expr arg) = Expr $ Call fun arg $ hListLen @b
+call (Fragment fun) = callUnsafe fun
+
+callUnsafe ::
+  forall a b blk.
+  HListLen b =>
+  AnySeq ->
+  Expr blk a ->
+  Expr blk b
+callUnsafe fun (Expr arg) = Expr $ Call fun arg $ hListLen @b
 
 lambdaCall ::
-  forall a b blk.
+  forall b a blk.
   HListLen b =>
   (forall s. Expr blk '[IotaExec (HAppendListR a s) (HAppendListR b s)]) ->
   Expr blk a ->
@@ -144,6 +157,15 @@ lambdaCall (Expr fun) (Expr arg) = Expr $ LambdaCall fun arg $ hListLen @b
 infixr 6 +|+
 (+|+) :: Expr blk a -> Expr blk b -> Expr blk (HAppendListR a b)
 Expr a +|+ Expr b = Expr $ Merge a b
+
+class ExprCast as bs where
+  cast :: Expr blk as -> Expr blk bs
+  cast = Expr . unwrapExpr
+instance ExprCast '[] '[]
+instance (IotaCast a b, ExprCast as bs) => ExprCast (a ': as) (b ': bs)
+
+unsafeCast :: (HLength as ~ HLength bs) => Expr blk as -> Expr blk bs
+unsafeCast = Expr . unwrapExpr
 
 -- ==== block typedefs
 
@@ -452,13 +474,13 @@ lowerBlockState bs = runST $ do
   let BlockState {bsBindings = binds_, bsBindingLen = varCnt} = bs
       binds = reverse binds_
   varUses <- VUM.replicate varCnt (0 :: Int)
-  let cntExprVar = \case
+  let countVarUses = \case
         Intro _is _len -> pure ()
-        Call _fun arg _len -> cntExprVar arg
-        LambdaCall fun arg _len -> cntExprVar fun *> cntExprVar arg
-        Merge l r -> cntExprVar l *> cntExprVar r
+        Call _fun arg _len -> countVarUses arg
+        LambdaCall fun arg _len -> countVarUses fun *> countVarUses arg
+        Merge l r -> countVarUses l *> countVarUses r
         Var v -> VUM.modify varUses (+ 1) v
-  forM_ binds (cntExprVar . fst)
+  forM_ binds (countVarUses . fst)
 
   ops <- runLowerM varUses $ (\go -> foldM_ go 0 binds) $ \vars (expr, vars') ->
     do

@@ -42,7 +42,7 @@ anglesIntrospection, anglesRetrospection :: [Angle]
 escapedPatterns :: [[Angle]]
 escapedPatterns =
   map
-    (\(IotaPattern (Pattern _ angles)) -> angles)
+    (\(IotaPattern (Pattern _ ang)) -> ang)
     [ iotaIntrospection
     , iotaRetrospection
     , iotaConsideration
