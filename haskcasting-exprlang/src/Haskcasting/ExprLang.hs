@@ -6,7 +6,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 module Haskcasting.ExprLang (
-  Expr,
+  Expr (..),
   empty,
   intro,
   introUnsafe,
@@ -83,7 +83,6 @@ type AnySeq = Seq.Seq IotaAny
 data RawExpr
   = Intro AnySeq Int
   | Call AnySeq RawExpr Int
-  | LambdaCall RawExpr RawExpr Int
   | Merge RawExpr RawExpr
   | Var Int
 
@@ -96,14 +95,6 @@ instance Show RawExpr where
     (Call _f a l) ->
       showParen (p > 10) $
         showString "Call <seq> "
-          . showsPrec 11 a
-          . showString " "
-          . showsPrec 11 l
-    (LambdaCall f a l) ->
-      showParen (p > 10) $
-        showString "LambdaCall "
-          . showsPrec 11 f
-          . showString " "
           . showsPrec 11 a
           . showString " "
           . showsPrec 11 l
@@ -155,7 +146,7 @@ lambdaCall ::
   (forall s. Expr blk '[IotaExec (HAppendListR a s) (HAppendListR b s)]) ->
   Expr blk a ->
   Expr blk b
-lambdaCall (Expr fun) (Expr arg) = Expr $ LambdaCall fun arg $ hListLen @b
+lambdaCall (Expr fun) (Expr arg) = Expr $ Call (Seq.singleton $ iotaCast iotaHermesGambit) (Merge fun arg) $ hListLen @b
 
 infixr 6 +|+
 (+|+) :: Expr blk a -> Expr blk b -> Expr blk (HAppendListR a b)
@@ -167,8 +158,11 @@ class ExprCast as bs where
 instance ExprCast '[] '[]
 instance (IotaCast a b, ExprCast as bs) => ExprCast (a ': as) (b ': bs)
 
-unsafeCast :: (HLength as ~ HLength bs) => Expr blk as -> Expr blk bs
-unsafeCast = Expr . unwrapExpr
+class ExprUnsafeCast as bs where
+  unsafeCast :: Expr blk as -> Expr blk bs
+  unsafeCast = Expr . unwrapExpr
+instance ExprUnsafeCast '[] '[]
+instance ExprUnsafeCast as bs => ExprUnsafeCast (a ': as) (b ': bs)
 
 -- ==== block typedefs
 
@@ -210,6 +204,10 @@ type family HTuple (xs :: [Type]) where
   HTuple '[a, b, c, d, e, f, g] = (a, b, c, d, e, f, g)
   HTuple '[a, b, c, d, e, f, g, h] = (a, b, c, d, e, f, g, h)
 
+type family ExprSplit blk (xs :: [Type]) = (r :: [Type]) | r -> xs where
+  ExprSplit blk '[] = '[]
+  ExprSplit blk (x ': xs) = Expr blk '[x] ': ExprSplit blk xs
+
 class ExprSplitTuple (xs :: [Type]) where
   exprSplitTuple :: HList (ExprSplit blk xs) -> HTuple (ExprSplit blk xs)
 instance ExprSplitTuple '[] where
@@ -230,10 +228,6 @@ instance ExprSplitTuple '[a, b, c, d, e, f, g] where
   exprSplitTuple (a `HCons` b `HCons` c `HCons` d `HCons` e `HCons` f `HCons` g `HCons` HNil) = (a, b, c, d, e, f, g)
 instance ExprSplitTuple '[a, b, c, d, e, f, g, h] where
   exprSplitTuple (a `HCons` b `HCons` c `HCons` d `HCons` e `HCons` f `HCons` g `HCons` h `HCons` HNil) = (a, b, c, d, e, f, g, h)
-
-type family ExprSplit blk (xs :: [Type]) = (r :: [Type]) | r -> xs where
-  ExprSplit blk '[] = '[]
-  ExprSplit blk (x ': xs) = Expr blk '[x] ': ExprSplit blk xs
 
 class MkExprVars (xs :: [Type]) where
   mkExprVars :: forall blk. Int -> HList (ExprSplit blk xs)
@@ -480,7 +474,6 @@ lowerBlockState bs = runST $ do
   let countVarUses = \case
         Intro _is _len -> pure ()
         Call _fun arg _len -> countVarUses arg
-        LambdaCall fun arg _len -> countVarUses fun *> countVarUses arg
         Merge l r -> countVarUses l *> countVarUses r
         Var v -> VUM.modify varUses (+ 1) v
   forM_ binds (countVarUses . fst)
@@ -506,12 +499,6 @@ lowerExpr expr = do
           go arg
           off' <- lowerMLift $ readSTRef off
           lowerMPushOp $ OpFunc $ FuncOp fun off' len
-          lowerMLift $ writeSTRef off len
-        LambdaCall fun arg len -> do
-          go arg
-          go fun
-          off' <- lowerMLift $ readSTRef off
-          lowerMPushOp $ OpFunc $ FuncOp [iotaCast iotaHermesGambit] off' len
           lowerMLift $ writeSTRef off len
         Merge l r -> do
           go r
