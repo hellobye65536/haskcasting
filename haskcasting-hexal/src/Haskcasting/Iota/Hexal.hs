@@ -10,7 +10,7 @@ import Haskcasting.Iota (Iota (..), IotaNumber)
 import Haskcasting.Iota.Moreiotas (IotaItemType)
 import Haskcasting.Patterns.Hexcasting (FragAdditiveDistillation, FragLengthPurification)
 import Haskcasting.Patterns.Moreiotas (FragSortersPurification)
-import Haskcasting.Patterns.TH (mkFrag)
+import Haskcasting.Patterns.TH (mkFragInstance)
 
 newtype IotaMote = IotaMote Text deriving (Eq)
 instance Iota IotaMote where
@@ -22,17 +22,17 @@ instance Iota IotaGate where
 
 -- overloads
 
-$( mkFrag
+$( mkFragInstance
      "AdditiveDistillation"
      [[t|Fragment '[IotaMote, IotaMote] '[IotaMote]|]]
  )
 
-$( mkFrag
+$( mkFragInstance
      "LengthPurification"
      [[t|Fragment '[IotaMote] '[IotaNumber]|]]
  )
 
-$( mkFrag
+$( mkFragInstance
      "SortersPurification"
      [[t|Fragment '[IotaMote] '[IotaItemType]|]]
  )

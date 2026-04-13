@@ -20,7 +20,7 @@ import Haskcasting.Patterns.Hexcasting (
   FragSelectionExaltation,
  )
 import Haskcasting.Serialize.A qualified as SA
-import Haskcasting.Patterns.TH (mkFrag)
+import Haskcasting.Patterns.TH (mkFragInstance)
 
 newtype IotaString = IotaString Text
 instance Iota IotaString where
@@ -54,46 +54,46 @@ instance Iota IotaIotaType where
 
 -- overloads
 
-$( mkFrag
+$( mkFragInstance
      "AdditiveDistillation"
      [ [t|Fragment '[IotaString, IotaString] '[IotaString]|]
      , [t|Fragment '[IotaMatrix, IotaMatrix] '[IotaMatrix]|]
      ]
  )
 
-$( mkFrag
+$( mkFragInstance
      "MultiplicativeDistillation"
      [[t|Fragment '[IotaMatrix, IotaMatrix] '[IotaMatrix]|]]
  )
 
-$( mkFrag
+$( mkFragInstance
      "DivisionDistillation"
      [[t|Fragment '[IotaMatrix, IotaMatrix] '[IotaMatrix]|]]
  )
 
-$( mkFrag
+$( mkFragInstance
      "LengthPurification"
      [ [t|Fragment '[IotaString] '[IotaNumber]|]
      , [t|Fragment '[IotaItemStack] '[IotaNumber]|]
      ]
  )
 
-$( mkFrag
+$( mkFragInstance
      "PowerDistillation"
      [[t|Fragment '[IotaNumber, IotaMatrix] '[IotaMatrix]|]]
  )
 
-$( mkFrag
+$( mkFragInstance
      "LocatorsDistillation"
      [[t|Fragment '[IotaString, IotaString] '[IotaNumber]|]]
  )
 
-$( mkFrag
+$( mkFragInstance
      "RetrogradePurification"
      [[t|Fragment '[IotaMatrix] '[IotaMatrix]|]]
  )
 
-$( mkFrag
+$( mkFragInstance
      "SelectionExaltation"
      [[t|Fragment '[IotaNumber, IotaNumber, IotaString] '[IotaString]|]]
  )
