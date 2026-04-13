@@ -18,6 +18,7 @@ common common
 
 common build-depends
     build-depends:
+        template-haskell,
         haskcasting,
         haskcasting-hexcasting,
         text,
@@ -35,6 +36,8 @@ library
     exposed-modules:
         Haskcasting.ExprLang
         Haskcasting.ExprLang.Ops
+        Haskcasting.ExprLang.TH
+        Haskcasting.ExprLang.Hexcasting
 
 test-suite ops
     import:

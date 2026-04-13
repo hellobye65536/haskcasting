@@ -28,6 +28,9 @@ module Haskcasting.ExprLang (
   lambdaTup,
   lambdaT,
   lambdaTupT,
+  --
+  HListLen,
+  hListLen,
 ) where
 
 import Control.Monad (foldM_, forM_)

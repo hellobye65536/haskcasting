@@ -240,7 +240,7 @@ instance Semigroup Cost where
 instance Monoid Cost where
   mempty = Cost 0 0
 
-data PathCost = PathCost {pcSeq :: AnySeq, pcCost :: !Cost}
+data PathCost = PathCost {pcSeq :: AnySeq, _pcCost :: !Cost}
 
 instance Semigroup PathCost where
   PathCost lis lc <> PathCost ris rc = PathCost (lis <> ris) (lc <> rc)
@@ -263,8 +263,8 @@ execPeepholeM n st = V.create $ inner st
     void $ runReaderT st' edges
     pure edges
 
-liftPeepholeST :: ST s a -> PeepholeM s a
-liftPeepholeST = PeepholeM . lift
+_liftPeepholeST :: ST s a -> PeepholeM s a
+_liftPeepholeST = PeepholeM . lift
 
 addEdge :: (Int, Int) -> PathCost -> PeepholeM s ()
 addEdge (u, v) pc = PeepholeM $ do
