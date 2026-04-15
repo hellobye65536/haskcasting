@@ -42,6 +42,7 @@ import Haskcasting.Compound.Hexcasting (lehmerCode, lehmerCodeMaxLen)
 import Haskcasting.Embed (iotaConsideration)
 import Haskcasting.Iota (IotaAny, IotaCast (iotaCast), IotaNumber (IotaNumber))
 import Haskcasting.Patterns.Hexcasting
+import Haskcasting.Util (AnySeqLit (anySeqLit))
 
 type AnySeq = Seq IotaAny
 
@@ -76,7 +77,7 @@ permExtend :: Int -> Perm -> Perm
 permExtend n (Perm d p) =
   if n <= 0
     then Perm d p
-    else Perm (d + n) (p <> VU.generate n (+d))
+    else Perm (d + n) (p <> VU.generate n (+ d))
 
 permDeepen :: Int -> Perm -> Perm
 permDeepen n (Perm d p) =
@@ -242,6 +243,9 @@ instance Monoid Cost where
 
 data PathCost = PathCost {pcSeq :: AnySeq, _pcCost :: !Cost}
 
+pathCostLit :: AnySeqLit a => a -> Cost -> PathCost
+pathCostLit s c = PathCost (anySeqLit s) c
+
 instance Semigroup PathCost where
   PathCost lis lc <> PathCost ris rc = PathCost (lis <> ris) (lc <> rc)
 instance Monoid PathCost where
@@ -316,11 +320,11 @@ peepholes = [consecutive, swindlers]
               Nothing -> pure ()
               Just code ->
                 addEdge (u, v) $
-                  PathCost
-                    [ iotaCast iotaConsideration
-                    , iotaCast $ IotaNumber $ fromIntegral code
-                    , iotaCast iotaSwindlersGambit
-                    ]
+                  pathCostLit
+                    ( iotaConsideration
+                    , IotaNumber $ fromIntegral code
+                    , iotaSwindlersGambit
+                    )
                     (Cost 3 2)
             pure perm'
       _ -> pure ()
@@ -328,32 +332,32 @@ peepholes = [consecutive, swindlers]
 pathFish :: Fish -> PathCost
 pathFish (Fish i_) = case i_ of
   0 -> mempty
-  1 -> PathCost [iotaCast iotaJestersGambit] (Cost 1 0)
-  2 -> PathCost [iotaCast iotaRotationGambit] (Cost 1 0)
-  -2 -> PathCost [iotaCast iotaRotationGambitII] (Cost 1 0)
+  1 -> pathCostLit iotaJestersGambit (Cost 1 0)
+  2 -> pathCostLit iotaRotationGambit (Cost 1 0)
+  -2 -> pathCostLit iotaRotationGambitII (Cost 1 0)
   i ->
-    PathCost
-      [ iotaCast $ iotaNumericalReflection i
-      , iotaCast iotaFishermansGambit
-      ]
+    pathCostLit
+      ( iotaNumericalReflection i
+      , iotaFishermansGambit
+      )
       (Cost 2 1)
 pathFish (FishDup i_) = case i_ of
-  0 -> PathCost [iotaCast iotaGeminiDecomposition] (Cost 1 0)
-  1 -> PathCost [iotaCast iotaProspectorsGambit] (Cost 1 0)
-  -1 -> PathCost [iotaCast iotaUndertakersGambit] (Cost 1 0)
+  0 -> pathCostLit iotaGeminiDecomposition (Cost 1 0)
+  1 -> pathCostLit iotaProspectorsGambit (Cost 1 0)
+  -1 -> pathCostLit iotaUndertakersGambit (Cost 1 0)
   i ->
-    PathCost
-      [ iotaCast $ iotaNumericalReflection i
-      , iotaCast iotaFishermansGambitII
-      ]
+    pathCostLit
+      ( iotaNumericalReflection i
+      , iotaFishermansGambitII
+      )
       (Cost 2 1)
 
 pathBookkeeper :: [Bool] -> PathCost
 pathBookkeeper keep = case NE.nonEmpty keep of
   Nothing -> mempty
   Just keep' ->
-    PathCost
-      [iotaCast $ iotaBookkeepersGambit keep']
+    pathCostLit
+      (iotaBookkeepersGambit keep')
       (Cost 1 0)
 
 -- 0,1,2,3,4    1,2,3,4,0
@@ -382,12 +386,12 @@ pathDupSlice :: Int -> Int -> PathCost
 pathDupSlice 0 _ = mempty
 pathDupSlice d 1 = pathFish $ FishDup (d - 1)
 pathDupSlice 1 n =
-  PathCost
-    [ iotaCast $ iotaNumericalReflection (n + 1)
-    , iotaCast iotaGeminiGambit
-    ]
+  pathCostLit
+    ( iotaNumericalReflection (n + 1)
+    , iotaGeminiGambit
+    )
     (Cost 2 1)
-pathDupSlice 2 2 = PathCost [iotaCast iotaDioscuriGambit] (Cost 1 0)
+pathDupSlice 2 2 = pathCostLit iotaDioscuriGambit (Cost 1 0)
 -- too lazy to do list-based dup
 -- pathDupSlice d n | n < d = fold $ replicate n $ pathFish $ FishDup (d - 1)
 pathDupSlice d n = fold $ replicate n $ pathFish $ FishDup (d - 1)
@@ -402,7 +406,7 @@ optimizePerm perm = runST $ do
 
   let edges = execPeepholeM fl $ mapM_ ($ fishes) peepholes
 
-  dp <- VM.replicate (fl + 1) (PathCost Seq.empty (Cost 1000000 0))
+  dp <- VM.replicate (fl + 1) (pathCostLit () (Cost 1000000 0))
   VM.write dp 0 mempty
 
   iforM_ fishes $ \u fish -> do

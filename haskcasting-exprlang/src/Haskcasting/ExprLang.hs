@@ -63,7 +63,7 @@ import Haskcasting.ExprLang.Ops (
   optimizeOps,
  )
 import Haskcasting.Fragment (Fragment (Fragment))
-import Haskcasting.Iota (IotaAny, IotaCast (iotaCast), IotaExec, IotaList (IotaList))
+import Haskcasting.Iota (IotaExec, IotaList (IotaList))
 import Haskcasting.Patterns.Hexcasting (
   iotaBookkeepersGambit,
   iotaFlocksDisintegration,
@@ -72,11 +72,9 @@ import Haskcasting.Patterns.Hexcasting (
   iotaNumericalReflection,
   iotaSurgeonsExaltation,
  )
-import Haskcasting.Util (HListLen, hListLen)
+import Haskcasting.Util (AnySeq, HListLen, anySeqLit, hListLen)
 
 import Haskcasting.ExprLang.Core
-
-type AnySeq = Seq.Seq IotaAny
 
 lambdaCall ::
   forall b a blk.
@@ -84,7 +82,7 @@ lambdaCall ::
   (forall s. Expr blk '[IotaExec (HAppendListR a s) (HAppendListR b s)]) ->
   Expr blk a ->
   Expr blk b
-lambdaCall (Expr fun) (Expr arg) = Expr $ Call (Seq.singleton $ iotaCast iotaHermesGambit) (Merge fun arg) $ hListLen @b
+lambdaCall fun arg = callUnsafe (anySeqLit iotaHermesGambit) (fun +|+ arg)
 
 -- ==== block typedefs
 
@@ -288,17 +286,19 @@ lambdaT (Expr cap) blk = do
   let blk' = fmap unwrapExpr $ blk @() $ mkExprVars @inits @() 0
   insts <- lowerBlockT (hListLen @cap) (hListLen @arg) (hListLen @ret) blk'
 
-  let exprBase = Intro [iotaCast iotaConsideration, iotaCast $ IotaList insts] 1
-      exprCap = cap `Merge` Intro [iotaCast $ iotaNumericalReflection 1] 1 `Merge` exprBase
+  let exprBase = Intro (anySeqLit (iotaConsideration, IotaList insts)) 1
+      exprCap = cap `Merge` Intro (anySeqLit $ iotaNumericalReflection 1) 1 `Merge` exprBase
   pure $ Expr $ case (hListLen @cap) of
     0 -> exprBase
-    1 -> Call [iotaCast iotaSurgeonsExaltation] exprCap 1
+    1 -> Call (anySeqLit iotaSurgeonsExaltation) exprCap 1
     _ ->
       Call
-        [ iotaCast $ iotaNumericalReflection (hListLen @cap)
-        , iotaCast iotaFlocksGambit
-        , iotaCast iotaSurgeonsExaltation
-        ]
+        ( anySeqLit
+            ( iotaNumericalReflection (hListLen @cap)
+            , iotaFlocksGambit
+            , iotaSurgeonsExaltation
+            )
+        )
         exprCap
         1
 
@@ -328,9 +328,9 @@ lowerBlockT caps args rets blk = do
   blockState <- flip execStateT blockStateDefault $ unwrapExprBlockT $ do
     let capsInsts =
           case caps of
-            0 -> []
-            1 -> [iotaCast iotaConsideration, iotaCast $ iotaBookkeepersGambit [True]]
-            _ -> [iotaCast iotaConsideration, iotaCast $ iotaBookkeepersGambit [True], iotaCast iotaFlocksDisintegration]
+            0 -> Seq.empty
+            1 -> anySeqLit (iotaConsideration, iotaBookkeepersGambit [True])
+            _ -> anySeqLit (iotaConsideration, iotaBookkeepersGambit [True], iotaFlocksDisintegration)
     bsPushBinding (Intro capsInsts $ args + caps, args + caps)
     expr <- blk
     bsPushBinding (expr, rets)
