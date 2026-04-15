@@ -25,6 +25,7 @@ library
         Haskcasting.Iota
         Haskcasting.Fragment
         Haskcasting.Embed
+        Haskcasting.Util
         Haskcasting.Serialize
         Haskcasting.Serialize.A
         Haskcasting.Patterns.TH

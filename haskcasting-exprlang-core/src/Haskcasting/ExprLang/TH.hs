@@ -35,7 +35,7 @@ import Language.Haskell.TH (
 import Data.List (singleton)
 import Data.Sequence qualified as Seq
 
-import Haskcasting.ExprLang (Expr, HListLen, callUnsafe, introUnsafe)
+import Haskcasting.ExprLang.Core (Expr, callUnsafe, introUnsafe)
 import Haskcasting.Iota (IotaCast (iotaCast))
 import Haskcasting.Pattern (Pattern)
 import Haskcasting.Patterns.TH (
@@ -49,6 +49,7 @@ import Haskcasting.Patterns.TH (
   parseFragType,
   toTypeList,
  )
+import Haskcasting.Util (HListLen)
 
 infixr 6 <<>>
 (<<>>) :: (Applicative m, Monoid a) => m a -> m a -> m a

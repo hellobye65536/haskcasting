@@ -6,7 +6,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 module Haskcasting.ExprLang (
-  Expr (..),
+  Expr,
   empty,
   intro,
   introUnsafe,
@@ -16,6 +16,7 @@ module Haskcasting.ExprLang (
   cast,
   unsafeCast,
   (+|+),
+  -- block
   ExprBlockT,
   ExprBlockM,
   blockBind,
@@ -28,9 +29,6 @@ module Haskcasting.ExprLang (
   lambdaTup,
   lambdaT,
   lambdaTupT,
-  --
-  HListLen,
-  hListLen,
 ) where
 
 import Control.Monad (foldM_, forM_)
@@ -40,9 +38,7 @@ import Control.Monad.State.Strict (MonadState (get), MonadTrans (lift), StateT, 
 import Data.Functor.Identity (Identity (runIdentity))
 import Data.HList (
   HAppendListR,
-  HLength,
   HList (HCons, HNil),
-  HNat2Nat,
  )
 import Data.Kind (Type)
 import Data.Maybe (fromMaybe)
@@ -56,8 +52,7 @@ import Data.STRef (
 import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
 import Data.Vector.Unboxed.Mutable qualified as VUM
-import GHC.TypeLits (KnownNat)
-import Haskcasting.Compound.Hexcasting (natValInt)
+
 import Haskcasting.Embed (iotaConsideration)
 import Haskcasting.ExprLang.Ops (
   Fish (..),
@@ -77,68 +72,11 @@ import Haskcasting.Patterns.Hexcasting (
   iotaNumericalReflection,
   iotaSurgeonsExaltation,
  )
+import Haskcasting.Util (HListLen, hListLen)
+
+import Haskcasting.ExprLang.Core
 
 type AnySeq = Seq.Seq IotaAny
-
-data RawExpr
-  = Intro AnySeq Int
-  | Call AnySeq RawExpr Int
-  | Merge RawExpr RawExpr
-  | Var Int
-
-instance Show RawExpr where
-  showsPrec p = \case
-    (Intro _f l) ->
-      showParen (p > 10) $
-        showString "Intro <seq> "
-          . showsPrec 11 l
-    (Call _f a l) ->
-      showParen (p > 10) $
-        showString "Call <seq> "
-          . showsPrec 11 a
-          . showString " "
-          . showsPrec 11 l
-    (Merge l r) ->
-      showParen (p > 6) $
-        showsPrec 7 l
-          . showString " +|+ "
-          . showsPrec 6 r
-    (Var v) ->
-      showParen (p > 10) $
-        showString "Var "
-          . showsPrec 11 v
-
-data Expr (blk :: Type) (as :: [Type]) = Expr {unwrapExpr :: RawExpr}
-  deriving (Show)
-
-type HListLen xs = KnownNat (HNat2Nat (HLength xs))
-hListLen :: forall (xs :: [Type]). HListLen xs => Int
-hListLen = natValInt @(HNat2Nat (HLength xs))
-
-empty :: Expr blk '[]
-empty = Expr $ Intro Seq.empty 0
-
-intro :: forall a blk. HListLen a => (forall s. Fragment s (HAppendListR a s)) -> Expr blk a
-intro (Fragment is) = introUnsafe is
-
-introUnsafe :: forall a blk. HListLen a => AnySeq -> Expr blk a
-introUnsafe is = Expr $ Intro is $ hListLen @a
-
-call ::
-  forall b a blk.
-  HListLen b =>
-  (forall s. Fragment (HAppendListR a s) (HAppendListR b s)) ->
-  Expr blk a ->
-  Expr blk b
-call (Fragment fun) = callUnsafe fun
-
-callUnsafe ::
-  forall a b blk.
-  HListLen b =>
-  AnySeq ->
-  Expr blk a ->
-  Expr blk b
-callUnsafe fun (Expr arg) = Expr $ Call fun arg $ hListLen @b
 
 lambdaCall ::
   forall b a blk.
@@ -147,22 +85,6 @@ lambdaCall ::
   Expr blk a ->
   Expr blk b
 lambdaCall (Expr fun) (Expr arg) = Expr $ Call (Seq.singleton $ iotaCast iotaHermesGambit) (Merge fun arg) $ hListLen @b
-
-infixr 6 +|+
-(+|+) :: Expr blk a -> Expr blk b -> Expr blk (HAppendListR a b)
-Expr a +|+ Expr b = Expr $ Merge a b
-
-class ExprCast as bs where
-  cast :: Expr blk as -> Expr blk bs
-  cast = Expr . unwrapExpr
-instance ExprCast '[] '[]
-instance (IotaCast a b, ExprCast as bs) => ExprCast (a ': as) (b ': bs)
-
-class ExprUnsafeCast as bs where
-  unsafeCast :: Expr blk as -> Expr blk bs
-  unsafeCast = Expr . unwrapExpr
-instance ExprUnsafeCast '[] '[]
-instance ExprUnsafeCast as bs => ExprUnsafeCast (a ': as) (b ': bs)
 
 -- ==== block typedefs
 
