@@ -194,7 +194,7 @@ bootstrap1 =
       +.+ embedIntroRetro (fromJust @IotaAnyList $ iotaTryCast deserializeMergeN)
       +.+ embedIntroRetro (fromJust @IotaAnyList $ iotaTryCast deserializeString)
       +.+ mergeTopN @3
-      +.+ fragUnsafeCast @'[IotaAnyList]
+      +.+ fragCast @'[IotaAnyList]
   inner =
     fragAssertStack @'[]
       +.+ embedInstDefs
