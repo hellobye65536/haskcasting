@@ -25,6 +25,7 @@ library
         Haskcasting.Compound.Hexcasting
     build-depends:
         haskcasting,
+        haskcasting-exprlang-core,
         text,
         containers,
         file-embed,
