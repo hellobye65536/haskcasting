@@ -4,10 +4,10 @@
 
 module Haskcasting.Patterns.Hexcassettes where
 
-import Haskcasting.Fragment (Fragment)
-import Haskcasting.Iota (IotaExec, IotaNumber, IotaAnyList)
-import Haskcasting.Pattern (pattern)
 import Haskcasting.ExprLang.TH (mkIotaFragExpr)
+import Haskcasting.Fragment (Fragment)
+import Haskcasting.Iota (IotaAnyList, IotaExec, IotaNumber)
+import Haskcasting.Pattern (pattern)
 
 $( mkIotaFragExpr
      "Enqueue"
