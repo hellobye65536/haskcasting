@@ -7,20 +7,12 @@ module Haskcasting.Iota.Moreiotas where
 import Data.Sequence qualified as Seq
 import Data.Text (Text)
 import Data.Text qualified as T
+import Haskcasting.ExprLang.TH (mkFragExprInstance)
 import Haskcasting.Fragment (Fragment)
 import Haskcasting.Iota (Iota (..), IotaNumber)
-import Haskcasting.Patterns.Hexcasting (
-  FragAdditiveDistillation,
-  FragDivisionDistillation,
-  FragLengthPurification,
-  FragLocatorsDistillation,
-  FragMultiplicativeDistillation,
-  FragPowerDistillation,
-  FragRetrogradePurification,
-  FragSelectionExaltation,
- )
 import Haskcasting.Serialize.A qualified as SA
-import Haskcasting.Patterns.TH (mkFragInstance)
+
+import Haskcasting.Patterns.Hexcasting
 
 newtype IotaString = IotaString Text
 instance Iota IotaString where
@@ -54,46 +46,46 @@ instance Iota IotaIotaType where
 
 -- overloads
 
-$( mkFragInstance
+$( mkFragExprInstance
      "AdditiveDistillation"
      [ [t|Fragment '[IotaString, IotaString] '[IotaString]|]
      , [t|Fragment '[IotaMatrix, IotaMatrix] '[IotaMatrix]|]
      ]
  )
 
-$( mkFragInstance
+$( mkFragExprInstance
      "MultiplicativeDistillation"
      [[t|Fragment '[IotaMatrix, IotaMatrix] '[IotaMatrix]|]]
  )
 
-$( mkFragInstance
+$( mkFragExprInstance
      "DivisionDistillation"
      [[t|Fragment '[IotaMatrix, IotaMatrix] '[IotaMatrix]|]]
  )
 
-$( mkFragInstance
+$( mkFragExprInstance
      "LengthPurification"
      [ [t|Fragment '[IotaString] '[IotaNumber]|]
      , [t|Fragment '[IotaItemStack] '[IotaNumber]|]
      ]
  )
 
-$( mkFragInstance
+$( mkFragExprInstance
      "PowerDistillation"
      [[t|Fragment '[IotaNumber, IotaMatrix] '[IotaMatrix]|]]
  )
 
-$( mkFragInstance
+$( mkFragExprInstance
      "LocatorsDistillation"
      [[t|Fragment '[IotaString, IotaString] '[IotaNumber]|]]
  )
 
-$( mkFragInstance
+$( mkFragExprInstance
      "RetrogradePurification"
      [[t|Fragment '[IotaMatrix] '[IotaMatrix]|]]
  )
 
-$( mkFragInstance
+$( mkFragExprInstance
      "SelectionExaltation"
      [[t|Fragment '[IotaNumber, IotaNumber, IotaString] '[IotaString]|]]
  )

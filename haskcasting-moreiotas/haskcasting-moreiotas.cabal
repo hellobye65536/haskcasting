@@ -25,6 +25,7 @@ library
         Haskcasting.Patterns.Moreiotas
     build-depends:
         haskcasting,
-        haskcasting-hexcasting,
+        haskcasting-exprlang-core,
         text,
         containers,
+        haskcasting-hexcasting,
