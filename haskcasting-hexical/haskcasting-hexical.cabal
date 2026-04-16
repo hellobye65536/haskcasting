@@ -25,5 +25,8 @@ library
         Haskcasting.Patterns.Hexical
     build-depends:
         haskcasting,
+        haskcasting-exprlang-core,
         text,
         containers,
+        haskcasting-hexcasting,
+        haskcasting-hexpose,

@@ -1,491 +1,202 @@
-{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE UndecidableInstances #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 
 module Haskcasting.Patterns.Hexical where
 
-import Data.Kind (Type)
-import Data.Proxy (Proxy (Proxy))
-import GHC.Natural (naturalToInteger)
-import GHC.TypeNats (KnownNat, natVal, type (-))
-import Haskcasting.Fragment (Fragment, fragSingleton)
+import Haskcasting.ExprLang.TH (mkFragExprInstance, mkGreatIotaFragExpr, mkIotaFragExpr)
+import Haskcasting.Fragment (Fragment)
 import Haskcasting.Iota (
   IotaAny,
+  IotaAnyList,
   IotaBoolean,
   IotaEntity,
-  IotaExec,
   IotaList,
+  IotaNull,
   IotaNumber,
-  IotaPattern (IotaPattern),
+  IotaPattern,
   IotaVector,
  )
+import Haskcasting.Pattern (pattern)
+
 import Haskcasting.Iota.Hexical (IotaDye, IotaPigment)
-import Haskcasting.Pattern (Direction (DirectionSW), Pattern (Pattern), angles, pattern)
-import Haskcasting.Patterns.TH (mkGreatIotaFrag, mkIotaFrag)
+import Haskcasting.Iota.Hexpose (IotaIdentifier, IotaItem)
+import Haskcasting.Patterns.Hexcasting
 
-type IotaIdentifier = IotaAny
+--- Items
 
-$( mkIotaFrag
-     "WriteGrimoire"
-     [pattern| WEST aqwqaeaqa |]
-     [[t|Fragment '[IotaList IotaPattern, IotaPattern] '[]|]]
+-- Driver Dots
+
+$(mkIotaFragExpr "ProgramDriver" [pattern| NORTH_WEST aqqqqaw |] [[t|Fragment '[IotaAnyList, IotaPattern] '[]|]])
+
+-- Grimoires
+
+$(mkIotaFragExpr "WriteGrimoire" [pattern| WEST aqwqaeaqa |] [[t|Fragment '[IotaAnyList, IotaPattern] '[]|]])
+$(mkIotaFragExpr "EraseGrimoire" [pattern| WEST aqwqaqded |] [[t|Fragment '[IotaPattern] '[]|]])
+$(mkIotaFragExpr "ArchivistReflection" [pattern| SOUTH_EAST aqaeaqwqa |] [[t|Fragment '[] '[IotaList IotaPattern]|]])
+
+-- Periwinkle
+
+$(mkIotaFragExpr "InduceDigging" [pattern| EAST wwwaqdadaadadqqqeaeq |] [[t|Fragment '[IotaEntity] '[]|]])
+
+-- Genie Lamps
+
+$(mkIotaFragExpr "Wish" [pattern| NORTH_WEST eweweweweweewedeaqqqd |] [[t|Fragment '[IotaNumber, IotaAnyList] '[]|]])
+$(mkIotaFragExpr "GenieReflectionSpatial" [pattern| NORTH_EAST qaqwddedqdd |] [[t|Fragment '[] '[IotaVector]|]])
+$(mkIotaFragExpr "GenieReflectionRotational" [pattern| NORTH_EAST qaqwddedadw |] [[t|Fragment '[] '[IotaVector]|]])
+$(mkIotaFragExpr "GenieReflectionKinetic" [pattern| NORTH_EAST qaqwddedqew |] [[t|Fragment '[] '[IotaVector]|]])
+$(mkIotaFragExpr "GenieReflectionTemporal" [pattern| NORTH_EAST qaqwddedqwddwa |] [[t|Fragment '[] '[IotaNumber]|]])
+$(mkIotaFragExpr "GenieReflectionMedia" [pattern| NORTH_EAST qaqwddedaeeeee |] [[t|Fragment '[] '[IotaNumber]|]])
+$(mkIotaFragExpr "GenieGambit" [pattern| NORTH_EAST qaqwddedqedeeeee |] [[t|forall a. Fragment '[a] '[]|]])
+$(mkIotaFragExpr "GenieReflectionMemory" [pattern| NORTH_EAST qaqwddedqwaqqqqq |] [[t|Fragment '[] '[IotaAny]|]])
+$(mkIotaFragExpr "FinaleReflection" [pattern| EAST aaddaddad |] [[t|Fragment '[] '[IotaBoolean]|]])
+
+-- Pattern Manipulation
+
+$( mkFragExprInstance
+     "LengthPurification"
+     [[t|Fragment '[IotaPattern] '[IotaNumber]|]]
  )
-
-$( mkIotaFrag
-     "EraseGrimoire"
-     [pattern| WEST aqwqaqded |]
-     [[t|Fragment '[IotaPattern] '[]|]]
- )
-
-$( mkIotaFrag
-     "ArchivistReflection"
-     [pattern| SOUTH_EAST aqaeaqwqa |]
-     [[t|Fragment '[] '[IotaList IotaPattern]|]]
- )
-
-$( mkIotaFrag
-     "AgeScroll"
-     [pattern| EAST waeqqqqeqqqwqeaeaeaeq |]
-     [[t|Fragment '[IotaEntity] '[]|]]
- )
-
-$( mkIotaFrag
-     "DyeInk"
-     [pattern| EAST waeqqqqewqqwqqeqeqqwqqeq |]
-     [[t|Fragment '[IotaVector, IotaEntity] '[]|]]
- )
-
-$( mkIotaFrag
-     "IlluminateInk"
-     [pattern| EAST waeqqqqedeqdqdqdqeqdwwd |]
-     [[t|Fragment '[IotaEntity] '[]|]]
- )
-
-$( mkIotaFrag
-     "VanishScroll"
-     [pattern| EAST waeqqqqedeqeeweeqewee |]
-     [[t|Fragment '[IotaEntity] '[]|]]
- )
-
-$( mkIotaFrag
-     "Wish"
-     [pattern| NORTH_WEST eweweweweweewedeaqqqd |]
-     [[t|Fragment '[IotaList IotaPattern] '[]|]]
- )
-
-$( mkIotaFrag
-     "GenieReflectionSpatial"
-     [pattern| SOUTH_WEST qwddedqdd |]
-     [[t|Fragment '[] '[IotaVector]|]]
- )
-
-$( mkIotaFrag
-     "GenieReflectionRotational"
-     [pattern| SOUTH_WEST qwddedadw |]
-     [[t|Fragment '[] '[IotaVector]|]]
- )
-
-$( mkIotaFrag
-     "GenieReflectionKinetic"
-     [pattern| SOUTH_WEST qwddedqew |]
-     [[t|Fragment '[] '[IotaVector]|]]
- )
-
-$( mkIotaFrag
-     "GenieReflectionTemporal"
-     [pattern| SOUTH_WEST qwddedqwddwa |]
-     [[t|Fragment '[] '[IotaNumber]|]]
- )
-
-$( mkIotaFrag
-     "GenieReflectionMedia"
-     [pattern| SOUTH_WEST qwddedaeeeee |]
-     [[t|Fragment '[] '[IotaNumber]|]]
- )
-
-$( mkIotaFrag
-     "GenieGambit"
-     [pattern| SOUTH_WEST qwddedqedeeeee |]
-     [[t|forall a. Fragment '[a] '[]|]]
- )
-
-$( mkIotaFrag
-     "GenieReflectionMemory"
-     [pattern| SOUTH_WEST qwddedqwaqqqqq |]
-     [[t|Fragment '[] '[IotaAny]|]]
- )
-
-$( mkIotaFrag
-     "FinaleReflection"
-     [pattern| EAST aaddaddad |]
-     [[t|Fragment '[] '[IotaBoolean]|]]
- )
-
-$( mkIotaFrag
-     "MakeGenie"
-     [pattern| EAST qaqwawqwqqwqwqwqwqwqq |]
-     [[t|Fragment '[IotaNumber, IotaEntity] '[]|]]
- )
-
-$( mkIotaFrag
-     "PromoteLamp"
-     [pattern| WEST qweedeqeedeqdqdwewewwewewwewe |]
-     [[t|Fragment '[IotaEntity] '[]|]]
- )
-
-$( mkIotaFrag
-     "ArchgeniePurification"
-     [pattern| NORTH_EAST qaqwddedqeed |]
-     [[t|Fragment '[IotaEntity] '[IotaBoolean]|]]
- )
-
-$( mkIotaFrag
-     "ArchgenieReflectionSpatial"
-     [pattern| NORTH_EAST qaqwddedqdd |]
-     [[t|Fragment '[] '[IotaVector]|]]
- )
-
-$( mkIotaFrag
-     "ArchgenieReflectionRotational"
-     [pattern| NORTH_EAST qaqwddedadw |]
-     [[t|Fragment '[] '[IotaVector]|]]
- )
-
-$( mkIotaFrag
-     "ArchgenieReflectionKinetic"
-     [pattern| NORTH_EAST qaqwddedqew |]
-     [[t|Fragment '[] '[IotaVector]|]]
- )
-
-$( mkIotaFrag
-     "ArchgenieReflectionTemporal"
-     [pattern| NORTH_EAST qaqwddedqwddwa |]
-     [[t|Fragment '[] '[IotaNumber]|]]
- )
-
-$( mkIotaFrag
-     "ArchgenieReflectionMedia"
-     [pattern| NORTH_EAST qaqwddedaeeeee |]
-     [[t|Fragment '[] '[IotaNumber]|]]
- )
-
-$( mkIotaFrag
-     "ArchgenieGambit"
-     [pattern| NORTH_EAST qaqwddedqedeeeee |]
-     [[t|forall a. Fragment '[a] '[]|]]
- )
-
-$( mkIotaFrag
-     "ArchgenieReflectionMemory"
-     [pattern| NORTH_EAST qaqwddedqwaqqqqq |]
-     [[t|Fragment '[] '[IotaAny]|]]
- )
-
-$( mkIotaFrag
-     "EpiphanyPurification"
-     [pattern| SOUTH_EAST awqaqqq |]
-     [[t|Fragment '[IotaEntity] '[IotaBoolean]|]]
- )
-
-$( mkIotaFrag
-     "SentiencePurification"
-     [pattern| SOUTH_EAST qqqaqqq |]
-     [[t|Fragment '[IotaEntity] '[IotaBoolean]|]]
- )
-
-$( mkIotaFrag
-     "GarbageReflection"
-     [pattern| EAST aqawde |]
-     [[t|Fragment '[] '[IotaAny]|]]
- )
-
-$( mkIotaFrag
-     "ReflectingGambit"
-     [pattern| NORTH_EAST ddwqaq |]
-     [[t|forall a b c. Fragment '[a, b, c] '[c, b, a]|]]
- )
-
-$( mkIotaFrag
-     "BubblingGambit"
-     [pattern| EAST aawede |]
-     [[t|forall a b c. Fragment '[a, b, c] '[a, c, b]|]]
- )
-
-iotaDioscuriGambitII :: IotaPattern
-iotaDioscuriGambitII = IotaPattern [pattern| EAST waadadaa |]
-
-$( mkIotaFrag
+$( mkIotaFragExpr
      "CongruenceDistillation"
      [pattern| EAST aaqd |]
      [[t|Fragment '[IotaPattern, IotaPattern] '[IotaBoolean]|]]
  )
-
--- yeah these two are swapped the docs are wrong
-$( mkIotaFrag
+$( mkIotaFragExpr
+     "SimilarityDistillation"
+     [pattern| EAST aedd |]
+     [[t|Fragment '[IotaPattern, IotaPattern] '[IotaBoolean]|]]
+ )
+$( mkFragExprInstance
+     "AdditiveDistillation"
+     [[t|Fragment '[IotaPattern, IotaPattern] '[IotaPattern]|]]
+ )
+$( mkFragExprInstance
+     "SubtractiveDistillation"
+     [[t|Fragment '[IotaPattern, IotaPattern] '[IotaNumber]|]]
+ )
+$( mkFragExprInstance
+     "MultiplicativeDistillation"
+     [[t|Fragment '[IotaNumber, IotaPattern] '[IotaPattern]|]]
+ )
+$( mkFragExprInstance
+     "DivisionDistillation"
+     [[t|Fragment '[IotaNumber, IotaPattern] '[IotaPattern]|]]
+ )
+$( mkFragExprInstance
+     "SelectionDistillation"
+     [[t|Fragment '[IotaNumber, IotaPattern] '[IotaPattern]|]]
+ )
+$( mkFragExprInstance
+     "ExcisorsDistillation"
+     [[t|Fragment '[IotaNumber, IotaPattern] '[IotaPattern]|]]
+ )
+$( mkIotaFragExpr
      "ChirographersPurification"
      [pattern| EAST wqaedeqd |]
-     -- [[t|Fragment '[IotaPattern] '[IotaList IotaNumber]|]]
-     [[t|Fragment '[IotaList IotaNumber] '[IotaPattern]|]]
+     [[t|Fragment '[IotaPattern] '[IotaList IotaPattern]|]]
  )
-
-$( mkIotaFrag
+$( mkIotaFragExpr
      "CalligraphersPurification"
      [pattern| EAST wqqqaqwd |]
-     -- [[t|Fragment '[IotaList IotaNumber] '[IotaPattern]|]]
-     [[t|Fragment '[IotaPattern] '[IotaList IotaNumber]|]]
+     [[t|Fragment '[IotaList IotaPattern] '[IotaPattern]|]]
  )
-
-$( mkIotaFrag
-     "HandwritingDistillation"
-     [pattern| NORTH_EAST eadqqqa |]
-     [[t|Fragment '[IotaPattern] '[IotaList IotaVector]|]]
- )
-
-$( mkIotaFrag
+$( mkIotaFragExpr
      "GlyphmakersDistillation"
      [pattern| NORTH_EAST aqqqdae |]
      [[t|Fragment '[IotaNumber, IotaPattern] '[IotaPattern]|]]
  )
 
-$( mkIotaFrag
-     "PerlinDistillation"
-     [pattern| WEST qawedqdq |]
-     [[t|Fragment '[IotaNumber, IotaVector] '[IotaNumber]|]]
+-- Grok
+
+$(mkIotaFragExpr "GrokReflection" [pattern| EAST aqawwqaw |] [[t|Fragment '[] '[IotaList IotaAny]|]])
+$(mkIotaFragExpr "GrokGambit" [pattern| EAST ewdewwde |] [[t|Fragment '[IotaList IotaAny] '[]|]])
+$(mkIotaFragExpr "GrokReflectionII" [pattern| EAST waqwawwqwaw |] [[t|Fragment '[] '[IotaList IotaAny]|]])
+$(mkIotaFragExpr "GrokGambitII" [pattern| EAST wewdwewwdwe |] [[t|Fragment '[IotaList IotaAny] '[]|]])
+
+-- Spelunking
+
+$( mkIotaFragExpr
+     "SpelunkingGambit"
+     [pattern| NORTH_EAST wdqqdwewdqqdwdqdadedaddww |]
+     [[t|Fragment '[IotaNumber, IotaVector, IotaVector] '[IotaList IotaAny, IotaList IotaAny]|]]
  )
 
-$( mkIotaFrag
-     "NavalDistillation"
-     [pattern| EAST wqqaqwede |]
-     [[t|Fragment '[IotaVector, IotaVector] '[IotaVector]|]]
- )
+-- Telepathy
 
-$( mkIotaFrag
-     "LilypadDistillation"
-     [pattern| EAST weedewqaq |]
-     [[t|Fragment '[IotaVector, IotaVector] '[IotaVector]|]]
- )
+$(mkIotaFragExpr "TelepathicReflection" [pattern| EAST wqqadaw |] [[t|Fragment '[] '[IotaNumber]|]])
+$(mkIotaFragExpr "OffensiveReflection" [pattern| NORTH_EAST qadee |] [[t|Fragment '[] '[IotaNumber]|]])
+$(mkIotaFragExpr "ManipulativeReflection" [pattern| NORTH_WEST edaqq |] [[t|Fragment '[] '[IotaNumber]|]])
+$(mkIotaFragExpr "ChargeReflection" [pattern| SOUTH_EAST aqaddq |] [[t|Fragment '[] '[IotaNumber]|]])
+$(mkIotaFragExpr "RetreatReflection" [pattern| SOUTH_WEST dedwdq |] [[t|Fragment '[] '[IotaNumber]|]])
+$(mkIotaFragExpr "DodgeReflection" [pattern| SOUTH_EAST edead |] [[t|Fragment '[] '[IotaNumber]|]])
+$(mkIotaFragExpr "EvadeReflection" [pattern| SOUTH_WEST qaqda |] [[t|Fragment '[] '[IotaNumber]|]])
+$(mkIotaFragExpr "StealthyReflection" [pattern| NORTH_WEST wede |] [[t|Fragment '[] '[IotaNumber]|]])
+$(mkIotaFragExpr "FleeingReflection" [pattern| NORTH_WEST wqaq |] [[t|Fragment '[] '[IotaNumber]|]])
+$(mkIotaFragExpr "LeapingReflection" [pattern| SOUTH_WEST qaqdaqqa |] [[t|Fragment '[] '[IotaNumber]|]])
+$(mkIotaFragExpr "RollingReflection" [pattern| NORTH_EAST qadeeee |] [[t|Fragment '[] '[IotaNumber]|]])
+$(mkIotaFragExpr "OffensivePurification" [pattern| NORTH_EAST wqadee |] [[t|Fragment '[IotaEntity] '[IotaNumber]|]])
+$(mkIotaFragExpr "ManipulativePurification" [pattern| NORTH_WEST wedaqq |] [[t|Fragment '[IotaEntity] '[IotaNumber]|]])
+$(mkIotaFragExpr "ChargePurification" [pattern| SOUTH_EAST aqaddqw |] [[t|Fragment '[IotaEntity] '[IotaNumber]|]])
+$(mkIotaFragExpr "RetreatPurification" [pattern| SOUTH_WEST dedwdqw |] [[t|Fragment '[IotaEntity] '[IotaNumber]|]])
+$(mkIotaFragExpr "DodgePurification" [pattern| SOUTH_EAST edeadw |] [[t|Fragment '[IotaEntity] '[IotaNumber]|]])
+$(mkIotaFragExpr "EvadePurification" [pattern| SOUTH_WEST qaqdaw |] [[t|Fragment '[IotaEntity] '[IotaNumber]|]])
+$(mkIotaFragExpr "LeapingPurification" [pattern| SOUTH_WEST qaqdawawa |] [[t|Fragment '[IotaEntity] '[IotaNumber]|]])
+$(mkIotaFragExpr "StealthyPurification" [pattern| NORTH_WEST wwede |] [[t|Fragment '[IotaEntity] '[IotaNumber]|]])
 
-$( mkIotaFrag
-     "RailgunExaltation"
-     [pattern| EAST wqqddqeqddq |]
-     [[t|Fragment '[IotaIdentifier, IotaVector, IotaVector] '[IotaVector]|]]
- )
+-- Akashic Utilities
 
-$( mkIotaFrag
-     "LaserExaltation"
-     [pattern| EAST weeaaeqeaae |]
-     [[t|Fragment '[IotaIdentifier, IotaVector, IotaVector] '[IotaVector]|]]
- )
-
-$( mkIotaFrag
-     "TelepathicReflection"
-     [pattern| EAST wqqadaw |]
-     [[t|Fragment '[] '[IotaNumber]|]]
- )
-
-$( mkIotaFrag
-     "SendThought"
-     [pattern| EAST qqqqwaqa |]
-     [[t|forall a. Fragment '[a] '[]|]]
- )
-
-$( mkIotaFrag
-     "ShoutThought"
-     [pattern| EAST daqqqqwa |]
-     [[t|forall a. Fragment '[a] '[]|]]
- )
-
-$( mkIotaFrag
-     "HallucinatePling"
-     [pattern| NORTH_EAST eqqqada |]
-     [[t|Fragment '[] '[]|]]
- )
-
-$( mkIotaFrag
-     "HallucinateClick"
-     [pattern| NORTH_EAST eqqadaq |]
-     [[t|Fragment '[] '[]|]]
- )
-
-$( mkIotaFrag
-     "ChargeReflection"
-     [pattern| SOUTH_EAST aqaddq |]
-     [[t|Fragment '[] '[IotaNumber]|]]
- )
-
-$( mkIotaFrag
-     "RetreatReflection"
-     [pattern| SOUTH_WEST dedwdq |]
-     [[t|Fragment '[] '[IotaNumber]|]]
- )
-
-$( mkIotaFrag
-     "DodgeReflection"
-     [pattern| SOUTH_EAST edead |]
-     [[t|Fragment '[] '[IotaNumber]|]]
- )
-
-$( mkIotaFrag
-     "EvadeReflection"
-     [pattern| SOUTH_WEST qaqda |]
-     [[t|Fragment '[] '[IotaNumber]|]]
- )
-
-$( mkIotaFrag
-     "LeapingReflection"
-     [pattern| SOUTH_WEST qaqdaqqa |]
-     [[t|Fragment '[] '[IotaNumber]|]]
- )
-
-$( mkIotaFrag
-     "StealthyReflection"
-     [pattern| NORTH_WEST wede |]
-     [[t|Fragment '[] '[IotaNumber]|]]
- )
-
-$( mkIotaFrag
-     "SorobanReflection"
-     [pattern| NORTH_EAST wdeaqq |]
-     [[t|Fragment '[] '[IotaNumber]|]]
- )
-
-$( mkIotaFrag
-     "SorobanReflectionII"
-     [pattern| SOUTH_EAST waqdee |]
-     [[t|Fragment '[] '[IotaNumber]|]]
- )
-
-$( mkIotaFrag
-     "SorobanGambit"
-     [pattern| NORTH_EAST qdeeaae |]
-     [[t|Fragment '[] '[]|]]
- )
-
-iotaJanusGambit :: IotaPattern
-iotaJanusGambit = IotaPattern [pattern| SOUTH_WEST aadee |]
-
-fragJanusGambit :: Fragment as bs
-fragJanusGambit = fragSingleton iotaJanusGambit
-
-iotaAtalantasGambit :: IotaPattern
-iotaAtalantasGambit = IotaPattern [pattern| SOUTH_WEST aqdea |]
-
-$( mkIotaFrag
-     "CastorsGambit"
-     [pattern| NORTH_WEST adadee |]
-     [[t|forall a. Fragment '[a] '[]|]]
- )
-
-$( mkIotaFrag
-     "PolluxsGambit"
-     [pattern| NORTH_EAST dadaqq |]
-     [[t|forall a. Fragment '[a] '[]|]]
- )
-
-iotaSisyphusGambit :: IotaPattern
-iotaSisyphusGambit = IotaPattern [pattern| NORTH_EAST qaqwede |]
-
-type family FragSisyphusGambit (as :: [Type]) (s :: [Type]) where
-  FragSisyphusGambit '[] s = s
-  FragSisyphusGambit (a ': as) (a ': s) = FragSisyphusGambit as s
-
-fragSisyphusGambit :: Fragment (IotaExec as as ': s) (FragSisyphusGambit as s)
-fragSisyphusGambit = fragSingleton iotaSisyphusGambit
-
-$( mkIotaFrag
-     "ThemisGambit"
-     [pattern| WEST dwaad |]
-     []
- )
-
-instance FragThemisGambit (IotaExec (a ': s) (IotaNumber ': s') ': IotaList a ': s) (IotaList a ': s)
-
-$( mkIotaFrag
-     "TutusGambit"
-     [pattern| WEST eedqa |]
-     [[t|Fragment '[] '[]|]]
- )
-
-$( mkIotaFrag
-     "LibrariansPurification"
-     [pattern| EAST qaqqadaq |]
-     [[t|Fragment '[IotaVector] '[IotaPattern]|]]
- )
-
-$( mkIotaFrag
-     "LibrariansPurificationII"
-     [pattern| EAST qaqqqada |]
-     [[t|Fragment '[IotaVector] '[IotaAny]|]]
- )
-
-$( mkIotaFrag
+$(mkIotaFragExpr "LibrariansPurification" [pattern| EAST qaqqadaq |] [[t|Fragment '[IotaVector] '[IotaPattern]|]])
+$(mkIotaFragExpr "LibrariansPurificationII" [pattern| EAST qaqqqada |] [[t|Fragment '[IotaVector] '[IotaAny]|]])
+$( mkIotaFragExpr
      "LibrariansGambit"
      [pattern| SOUTH_WEST edeeedad |]
      [[t|forall a. Fragment '[a, IotaPattern, IotaVector] '[]|]]
  )
+$(mkIotaFragExpr "LibrariansGambitII" [pattern| SOUTH_WEST edeedade |] [[t|Fragment '[IotaVector] '[]|]])
 
-$( mkIotaFrag
-     "LibrariansGambitII"
-     [pattern| SOUTH_WEST edeedade |]
-     [[t|Fragment '[IotaVector] '[]|]]
+--- Spells
+
+-- Mage Blocks
+
+$(mkIotaFragExpr "ConjureMageBlock" [pattern| NORTH_WEST dee |] [[t|Fragment '[IotaVector] '[]|]])
+$(mkIotaFragExpr "ResetMageBlock" [pattern| NORTH_WEST deeeaw |] [[t|Fragment '[IotaVector] '[]|]])
+$(mkIotaFragExpr "Bouncy" [pattern| NORTH_WEST deeqa |] [[t|Fragment '[IotaVector] '[]|]])
+$(mkIotaFragExpr "Energized" [pattern| NORTH_WEST deewad |] [[t|Fragment '[IotaNumber, IotaVector] '[]|]])
+$(mkIotaFragExpr "Ephemeral" [pattern| NORTH_WEST deewwaawd |] [[t|Fragment '[IotaNumber, IotaVector] '[]|]])
+$(mkIotaFragExpr "Volatile" [pattern| NORTH_WEST deewedeeeee |] [[t|Fragment '[IotaVector] '[]|]])
+
+-- Rotation
+
+$(mkIotaFragExpr "RotateBlock" [pattern| EAST edeeeeeweewadeeed |] [[t|Fragment '[IotaVector, IotaVector] '[]|]])
+$(mkIotaFragExpr "RotateEntity" [pattern| EAST qqqdaqqqa |] [[t|Fragment '[IotaNumber, IotaNumber, IotaEntity] '[]|]])
+
+-- Amber Preservation
+
+$(mkIotaFragExpr "AmberSeal" [pattern| EAST qaqeaqwqwqa |] [[t|Fragment '[IotaVector] '[]|]])
+
+-- Autographs
+
+$(mkIotaFragExpr "Autograph" [pattern| WEST eeeeeww |] [[t|Fragment '[] '[]|]])
+$(mkIotaFragExpr "Unautograph" [pattern| NORTH_EAST wwqqqqq |] [[t|Fragment '[] '[]|]])
+$( mkIotaFragExpr
+     "AuthenticatorsDistillation"
+     [pattern| NORTH_EAST wwqqqqqaw |]
+     [[t|Fragment '[IotaEntity, IotaItem] '[IotaBoolean]|]]
  )
 
-$( mkIotaFrag
-     "ConjureMageBlock"
-     [pattern| NORTH_WEST dee |]
-     [[t|Fragment '[IotaVector] '[]|]]
- )
+-- Dyes
 
-$( mkIotaFrag
-     "Bouncy"
-     [pattern| NORTH_WEST deeqa |]
-     [[t|Fragment '[IotaVector] '[]|]]
- )
-
-$( mkIotaFrag
-     "Energized"
-     [pattern| NORTH_WEST deewad |]
-     [[t|Fragment '[IotaNumber, IotaVector] '[]|]]
- )
-
-$( mkIotaFrag
-     "Ephemeral"
-     [pattern| NORTH_WEST deewwaawd |]
-     [[t|Fragment '[IotaNumber, IotaVector] '[]|]]
- )
-
-$( mkIotaFrag
-     "Invisible"
-     [pattern| NORTH_WEST deeqedeaqqqwqqq |]
-     [[t|Fragment '[IotaVector] '[]|]]
- )
-
-$( mkIotaFrag
-     "Replaceable"
-     [pattern| NORTH_WEST deewqaqqqqq |]
-     [[t|Fragment '[IotaVector] '[]|]]
- )
-
-$( mkIotaFrag
-     "Volatile"
-     [pattern| NORTH_WEST deewedeeeee |]
-     [[t|Fragment '[IotaVector] '[]|]]
- )
-
-$( mkIotaFrag
+$( mkIotaFragExpr
      "ChromaticPurification"
      [pattern| NORTH_EAST weedwa |]
-     [ [t|Fragment '[IotaVector] '[IotaDye]|]
+     [ [t|Fragment '[IotaIdentifier] '[IotaDye]|]
+     , [t|Fragment '[IotaVector] '[IotaDye]|]
      , [t|Fragment '[IotaEntity] '[IotaDye]|]
-     , [t|Fragment '[IotaIdentifier] '[IotaDye]|]
      ]
  )
-
-$( mkIotaFrag
+$( mkIotaFragExpr
      "Dye"
      [pattern| NORTH_WEST dwaqqw |]
      [ [t|Fragment '[IotaDye, IotaVector] '[]|]
@@ -493,732 +204,312 @@ $( mkIotaFrag
      ]
  )
 
-$( mkIotaFrag
-     "VisionPurification"
-     [pattern| EAST wdwwaawwewdwwewwdwwe |]
-     [[t|Fragment '[IotaDye] '[IotaVector]|]]
- )
+-- Mage Hand
 
-$( mkIotaFrag
-     "MagicMissile"
-     [pattern| WEST qaqww |]
-     [[t|Fragment '[IotaVector, IotaVector] '[]|]]
- )
-
-$( mkIotaFrag
-     "PigmentPurification"
-     [pattern| NORTH_WEST aqwedeweeeewweeew |]
-     [ [t|Fragment '[IotaEntity] '[IotaPigment]|]
-     , [t|Fragment '[IotaDye] '[IotaPigment]|]
+$( mkIotaFragExpr
+     "MageHand"
+     [pattern| NORTH_WEST dqq |]
+     [ [t|Fragment '[IotaBoolean, IotaNull, IotaEntity] '[]|]
+     , [t|Fragment '[IotaBoolean, IotaNull, IotaVector] '[]|]
+     , [t|Fragment '[IotaBoolean, IotaEntity, IotaEntity] '[]|]
+     , [t|Fragment '[IotaBoolean, IotaEntity, IotaVector] '[]|]
      ]
  )
 
-$( mkIotaFrag
+-- Mage Mouth
+
+$(mkIotaFragExpr "MageMouth" [pattern| EAST eeede |] [[t|Fragment '[IotaEntity] '[]|]])
+
+-- Magic Missile
+
+$(mkIotaFragExpr "MagicMissile" [pattern| WEST qaqww |] [[t|Fragment '[IotaVector, IotaVector] '[]|]])
+
+-- Pigment Manipulation
+
+$( mkIotaFragExpr
+     "PigmentPurification"
+     [pattern| NORTH_WEST aqwedeweeeewweeew |]
+     [ [t|Fragment '[IotaDye] '[IotaPigment]|]
+     , [t|Fragment '[IotaEntity] '[IotaPigment]|]
+     ]
+ )
+$( mkIotaFragExpr
      "PigmentExaltation"
      [pattern| SOUTH_EAST edewqaqqqqqwqqq |]
      [[t|Fragment '[IotaNumber, IotaVector, IotaPigment] '[IotaVector]|]]
  )
+$(mkIotaFragExpr "InternalizePigmentII" [pattern| EAST weeeweeqeeeewqaqweeee |] [[t|Fragment '[IotaPigment] '[]|]])
 
-$( mkIotaFrag
-     "InternalizePigmentII"
-     [pattern| EAST weeeweeqeeeewqaqweeee |]
-     [[t|Fragment '[IotaPigment] '[]|]]
- )
+-- Prestidigitation
 
-$( mkIotaFrag
+$( mkIotaFragExpr
      "Prestidigitation"
      [pattern| NORTH_EAST wedewedew |]
-     [ [t|Fragment '[IotaVector] '[]|]
-     , [t|Fragment '[IotaEntity] '[]|]
+     [ [t|Fragment '[IotaEntity] '[]|]
+     , [t|Fragment '[IotaVector] '[]|]
      ]
  )
 
-$( mkIotaFrag
-     "AlterationPurification"
-     [pattern| NORTH_WEST wqaqwqaqw |]
-     [ [t|Fragment '[IotaVector] '[IotaBoolean]|]
-     , [t|Fragment '[IotaEntity] '[IotaBoolean]|]
-     ]
- )
+-- Toasting
 
-$( mkIotaFrag
-     "Wristpocket"
-     [pattern| WEST aaqqa |]
-     [[t|Fragment '[] '[]|]]
- )
+$(mkIotaFragExpr "SendThought" [pattern| EAST qqqqwaqa |] [[t|forall a. Fragment '[a] '[]|]])
+$(mkIotaFragExpr "ShoutThought" [pattern| EAST daqqqqwa |] [[t|forall a. Fragment '[a] '[]|]])
+$(mkIotaFragExpr "Toast" [pattern| NORTH_EAST ewqqqwqqaee |] [[t|forall a b. Fragment '[IotaItem, b, a, IotaEntity] '[]|]])
 
-$( mkIotaFrag
-     "PocketReflection"
-     [pattern| WEST aaqqada |]
-     [[t|Fragment '[] '[IotaIdentifier]|]]
- )
+-- Wristpocket
 
-$( mkIotaFrag
-     "PocketReflectionII"
-     [pattern| WEST aaqqaaw |]
-     [[t|Fragment '[] '[IotaNumber]|]]
- )
-
-$( mkIotaFrag
+$(mkIotaFragExpr "Wristpocket" [pattern| WEST aaqqa |] [[t|Fragment '[] '[]|]])
+$(mkIotaFragExpr "WristpocketReflection" [pattern| WEST aaqqada |] [[t|Fragment '[] '[IotaItem]|]])
+$( mkIotaFragExpr
      "Sleight"
-     [pattern| WEST aaqqadeeeq |]
-     [ [t|Fragment '[IotaVector] '[]|]
-     , [t|Fragment '[IotaEntity] '[]|]
+     [pattern| WEST aaqqaded |]
+     [ [t|Fragment '[IotaEntity] '[]|]
+     , [t|Fragment '[IotaVector] '[]|]
      ]
  )
 
-$( mkIotaFrag
-     "MageHand"
-     [pattern| WEST aaqqaeea |]
-     [ [t|Fragment '[IotaVector] '[]|]
-     , [t|Fragment '[IotaEntity] '[]|]
+-- Flora Conjuration
+
+$( mkIotaFragExpr
+     "ConjureFlora"
+     [pattern| NORTH_EAST weqqqqqwaeaeaeaeaea |]
+     [[t|Fragment '[IotaIdentifier, IotaVector] '[]|]]
+ )
+
+-- Hexical Spells
+
+$( mkIotaFragExpr
+     "Confetti"
+     [pattern| EAST awddeqaedd |]
+     [ [t|Fragment '[IotaNumber, IotaVector] '[]|]
+     , [t|Fragment '[IotaVector, IotaVector] '[]|]
      ]
  )
-
-$( mkIotaFrag
-     "MageMouth"
-     [pattern| WEST aaqqqadaa |]
-     [[t|Fragment '[] '[]|]]
- )
-
-$( mkIotaFrag
-     "ConjureSpeck"
-     [pattern| SOUTH_WEST ade |]
-     [[t|forall a. Fragment '[IotaVector, IotaVector, a] '[IotaEntity]|]]
- )
-
-$( mkIotaFrag
-     "MoveSpeck"
-     [pattern| SOUTH_WEST adeqaa |]
-     [[t|Fragment '[IotaVector, IotaEntity] '[]|]]
- )
-
-$( mkIotaFrag
-     "RotateSpeck"
-     [pattern| SOUTH_WEST adeaw |]
-     [[t|Fragment '[IotaVector, IotaEntity] '[]|]]
- )
-
-$( mkIotaFrag
-     "RollSpeck"
-     [pattern| SOUTH_WEST adeqqqqq |]
-     [[t|Fragment '[IotaNumber, IotaEntity] '[]|]]
- )
-
-$( mkIotaFrag
-     "AlterSpeck"
-     [pattern| SOUTH_WEST adeeaqa |]
-     [[t|forall a. Fragment '[a, IotaEntity] '[]|]]
- )
-
-$( mkIotaFrag
-     "TimeSpeck"
-     [pattern| SOUTH_WEST adeqqaawdd |]
-     [[t|Fragment '[IotaNumber, IotaEntity] '[]|]]
- )
-
-$( mkIotaFrag
-     "ResizeSpeck"
-     [pattern| SOUTH_WEST adeeqed |]
-     [[t|Fragment '[IotaNumber, IotaEntity] '[]|]]
- )
-
-$( mkIotaFrag
-     "ThickenSpeck"
-     [pattern| SOUTH_WEST adeeqw |]
-     [[t|Fragment '[IotaNumber, IotaEntity] '[]|]]
- )
-
-$( mkIotaFrag
-     "PaintSpeck"
-     [pattern| SOUTH_WEST adeqqaq |]
-     [[t|Fragment '[IotaPigment, IotaEntity] '[]|]]
- )
-
-$( mkIotaFrag
-     "DismissSpeck"
-     [pattern| SOUTH_WEST adeaqde |]
+$( mkIotaFragExpr
+     "Silence"
+     [pattern| EAST wddaq |]
      [[t|Fragment '[IotaEntity] '[]|]]
  )
-
-$( mkIotaFrag
-     "ZoneDistillationSpecklike"
-     [pattern| SOUTH_EAST qqqqqwdeddwqde |]
-     [[t|Fragment '[IotaNumber, IotaVector] '[IotaList IotaEntity]|]]
+$( mkIotaFragExpr
+     "Vibrate"
+     [pattern| EAST wwawawwd |]
+     [ [t|Fragment '[IotaNumber, IotaEntity, IotaVector] '[]|]
+     , [t|Fragment '[IotaNumber, IotaVector, IotaVector] '[]|]
+     ]
  )
+$(mkIotaFragExpr "Sparkle" [pattern| NORTH_EAST dqa |] [[t|Fragment '[IotaNumber, IotaVector, IotaVector] '[]|]])
+$(mkIotaFragExpr "CrackDevice" [pattern| EAST wwaqqqqqeqdedwqeaeqwdedwqeaeq |] [[t|Fragment '[] '[]|]])
+$(mkIotaFragExpr "Illuminate" [pattern| SOUTH_EAST aeaeaeaeaeawqqqqq |] [[t|Fragment '[IotaNumber, IotaVector] '[]|]])
+$(mkIotaFragExpr "Gasp" [pattern| NORTH_WEST aweeeeewaweeeee |] [[t|Fragment '[IotaEntity] '[]|]])
+$(mkIotaFragExpr "Squawk" [pattern| NORTH_EAST wweedadw |] [[t|Fragment '[IotaIdentifier, IotaVector] '[]|]])
 
-$( mkIotaFrag
-     "Autograph"
-     [pattern| NORTH_EAST wwqqqqq |]
-     [[t|Fragment '[] '[]|]]
- )
+-- Projectiles
 
-$( mkIotaFrag
-     "ConjureHexburst"
-     [pattern| EAST aadaadqaq |]
-     [[t|forall a. Fragment '[a, IotaVector] '[]|]]
- )
+$(mkIotaFragExpr "ConjureEgg" [pattern| SOUTH_EAST qqqwaqaaqeeewdedde |] [[t|Fragment '[IotaVector] '[IotaEntity]|]])
+$(mkIotaFragExpr "ConjureSpit" [pattern| EAST dwqaqw |] [[t|Fragment '[IotaVector] '[IotaEntity]|]])
+$(mkIotaFragExpr "ConjureSnowball" [pattern| NORTH_EAST ddeeeeewd |] [[t|Fragment '[IotaVector] '[IotaEntity]|]])
+$(mkIotaFragExpr "ConjureFireball" [pattern| SOUTH_EAST wqqqqqwaeaeaeaeae |] [[t|Fragment '[IotaVector] '[IotaEntity]|]])
 
-$( mkIotaFrag
-     "ConjureHextito"
-     [pattern| EAST qaqdqaqdwawaw |]
-     [[t|forall as bs. Fragment '[IotaExec as bs, IotaVector] '[]|]]
- )
+-- Muting
 
-$( mkIotaFrag
-     "ConjureFireball"
-     [pattern| SOUTH_EAST wqqqqqwaeaeaeaeae |]
-     [[t|Fragment '[IotaVector] '[]|]]
- )
+$(mkIotaFragExpr "CensorshipPurification" [pattern| NORTH_WEST edaaw |] [[t|Fragment '[IotaEntity] '[IotaBoolean]|]])
 
-$( mkIotaFrag
-     "Spit"
-     [pattern| EAST dwqaqw |]
-     [[t|Fragment '[IotaVector] '[]|]]
- )
+-- Redstone Zapping
 
-$( mkIotaFrag
-     "Gasp"
-     [pattern| NORTH_WEST aweeeeewaweeeee |]
-     [[t|Fragment '[IotaEntity] '[]|]]
- )
+$(mkIotaFragExpr "Zap" [pattern| WEST qad |] [[t|Fragment '[IotaNumber, IotaNumber, IotaVector] '[]|]])
 
-$( mkIotaFrag
-     "Myodesopsia"
-     [pattern| SOUTH_EAST wadawadawawaaw |]
-     [[t|Fragment '[IotaList IotaPattern] '[]|]]
- )
+-- Specialized Breaking
 
-$( mkIotaFrag
-     "ConjureCompass"
-     [pattern| SOUTH_WEST aqwawqwqqwqwq |]
-     [[t|Fragment '[IotaVector, IotaVector] '[]|]]
- )
+$(mkIotaFragExpr "ExtractBlock" [pattern| EAST qaqqqqqdeeeqeee |] [[t|Fragment '[IotaNumber, IotaVector] '[]|]])
+$(mkIotaFragExpr "CollectBlock" [pattern| EAST aqaeaqdeeweweedq |] [[t|Fragment '[IotaVector] '[]|]])
 
-$( mkIotaFrag
+-- Conjurable Delights
+
+$(mkIotaFragExpr "ConjureHexGummy" [pattern| SOUTH_WEST eeewdw |] [[t|Fragment '[IotaVector] '[]|]])
+$(mkIotaFragExpr "ConjureHexburst" [pattern| EAST aadaadqaq |] [[t|forall a. Fragment '[a, IotaVector] '[]|]])
+$(mkIotaFragExpr "ConjureHextito" [pattern| EAST qaqdqaqdwawaw |] [[t|Fragment '[IotaAnyList, IotaVector] '[]|]])
+
+-- Conjure Spike
+
+$( mkIotaFragExpr
      "ConjureSpike"
      [pattern| NORTH_EAST qdqdqdqdww |]
      [[t|Fragment '[IotaNumber, IotaVector, IotaVector] '[]|]]
  )
 
-$( mkIotaFrag
-     "ConjureTchotchke"
-     [pattern| NORTH_EAST wwwwwaqqqqqeaqeaeaeaeaeq |]
-     []
-     -- [[t|forall a. Fragment '[IotaList a, IotaNumber, IotaNumber, IotaVector] '[]|]]
- )
+-- Block Mimicry
 
-$( mkIotaFrag
-     "TchotchkeGambit"
-     [pattern| NORTH_EAST waqqqqqedeqdqdqdqdqe |]
-     [[t|forall a. Fragment '[a] '[]|]]
+$(mkIotaFragExpr "Push" [pattern| SOUTH_WEST wqwawqwqqqeqq |] [[t|Fragment '[IotaVector, IotaVector] '[]|]])
+$( mkIotaFragExpr
+     "Dispense"
+     [pattern| SOUTH_WEST wqwawqwddaeeead |]
+     [[t|Fragment '[IotaVector, IotaVector, IotaItem] '[]|]]
  )
+$(mkIotaFragExpr "Cook" [pattern| SOUTH_EAST qwqqadadadewewewe |] [[t|Fragment '[IotaItem] '[]|]])
+$(mkIotaFragExpr "Roast" [pattern| NORTH_WEST aqqwwqqawdadedad |] [[t|Fragment '[IotaItem] '[]|]])
+$(mkIotaFragExpr "Smoke" [pattern| SOUTH_EAST qwqqadadadewdqqdwe |] [[t|Fragment '[IotaItem] '[]|]])
+$(mkIotaFragExpr "Blast" [pattern| SOUTH_EAST qwqqadadadewweewwe |] [[t|Fragment '[IotaItem] '[]|]])
+$(mkIotaFragExpr "CutStone" [pattern| EAST qqqqqwaeaeaeaeaeadawa |] [[t|Fragment '[IotaIdentifier, IotaItem] '[]|]])
 
-$( mkIotaFrag
-     "TchotchkeReflection"
-     [pattern| NORTH_EAST waqqqqqeaqeaeaeaeaeq |]
-     [[t|Fragment '[] '[IotaAny]|]]
+-- Circle Spells
+
+$(mkIotaFragExpr "Displace" [pattern| NORTH_EAST qaqqqqeedaqqqa |] [[t|Fragment '[IotaVector, IotaEntity] '[]|]])
+$(mkIotaFragExpr "Appendage" [pattern| WEST aaqqadaqwqa |] [[t|Fragment '[IotaVector] '[]|]])
+
+-- Evocation
+
+$(mkIotaFragExpr "Inculcate" [pattern| EAST wwaqqqqqeqdedwwqwqwwdedwwqwqw |] [[t|Fragment '[IotaAnyList] '[]|]])
+$(mkIotaFragExpr "EvocationReflection" [pattern| EAST wwdeeeeeqeaqawwewewwaqawwewew |] [[t|Fragment '[] '[IotaAnyList]|]])
+$(mkIotaFragExpr "EvokerReflection" [pattern| EAST wwaqqqqqeeaqawwewewwaqawwewew |] [[t|Fragment '[] '[IotaNumber]|]])
+
+-- Hopper
+
+{- ORMOLU_DISABLE -}
+$( mkIotaFragExpr
+     "Hopper"
+     [pattern| SOUTH_EAST qwawqwaeqqq |]
+     [[t|Fragment '[IotaEntity, IotaEntity] '[]|]
+     ,[t|Fragment '[IotaVector, IotaEntity] '[]|]
+     ,[t|Fragment '[IotaNull  , IotaEntity] '[]|]
+     ,[t|Fragment '[IotaEntity, IotaVector] '[]|]
+     ,[t|Fragment '[IotaVector, IotaVector] '[]|]
+     ,[t|Fragment '[IotaNull  , IotaVector] '[]|]
+     ,[t|Fragment '[IotaEntity, IotaNull  ] '[]|]
+     ,[t|Fragment '[IotaVector, IotaNull  ] '[]|]
+     ,[t|Fragment '[IotaNull  , IotaNull  ] '[]|]
+     ,[t|Fragment '[IotaNumber, IotaEntity, IotaEntity] '[]|]
+     ,[t|Fragment '[IotaNumber, IotaVector, IotaEntity] '[]|]
+     ,[t|Fragment '[IotaNumber, IotaNull  , IotaEntity] '[]|]
+     ,[t|Fragment '[IotaNumber, IotaEntity, IotaVector] '[]|]
+     ,[t|Fragment '[IotaNumber, IotaVector, IotaVector] '[]|]
+     ,[t|Fragment '[IotaNumber, IotaNull  , IotaVector] '[]|]
+     ,[t|Fragment '[IotaNumber, IotaEntity, IotaNull  ] '[]|]
+     ,[t|Fragment '[IotaNumber, IotaVector, IotaNull  ] '[]|]
+     ,[t|Fragment '[IotaNumber, IotaNull  , IotaNull  ] '[]|]
+     ,[t|Fragment '[IotaEntity, IotaNumber, IotaEntity] '[]|]
+     ,[t|Fragment '[IotaVector, IotaNumber, IotaEntity] '[]|]
+     ,[t|Fragment '[IotaNull  , IotaNumber, IotaEntity] '[]|]
+     ,[t|Fragment '[IotaEntity, IotaNumber, IotaVector] '[]|]
+     ,[t|Fragment '[IotaVector, IotaNumber, IotaVector] '[]|]
+     ,[t|Fragment '[IotaNull  , IotaNumber, IotaVector] '[]|]
+     ,[t|Fragment '[IotaEntity, IotaNumber, IotaNull  ] '[]|]
+     ,[t|Fragment '[IotaVector, IotaNumber, IotaNull  ] '[]|]
+     ,[t|Fragment '[IotaNull  , IotaNumber, IotaNull  ] '[]|]
+     ,[t|Fragment '[IotaNumber, IotaEntity, IotaNumber, IotaEntity] '[]|]
+     ,[t|Fragment '[IotaNumber, IotaVector, IotaNumber, IotaEntity] '[]|]
+     ,[t|Fragment '[IotaNumber, IotaNull  , IotaNumber, IotaEntity] '[]|]
+     ,[t|Fragment '[IotaNumber, IotaEntity, IotaNumber, IotaVector] '[]|]
+     ,[t|Fragment '[IotaNumber, IotaVector, IotaNumber, IotaVector] '[]|]
+     ,[t|Fragment '[IotaNumber, IotaNull  , IotaNumber, IotaVector] '[]|]
+     ,[t|Fragment '[IotaNumber, IotaEntity, IotaNumber, IotaNull  ] '[]|]
+     ,[t|Fragment '[IotaNumber, IotaVector, IotaNumber, IotaNull  ] '[]|]
+     ,[t|Fragment '[IotaNumber, IotaNull  , IotaNumber, IotaNull  ] '[]|]]
  )
+{- ORMOLU_ENABLE -}
 
-$( mkIotaFrag
-     "Displace"
-     [pattern| NORTH_EAST qaqqqqeedaqqqa |]
-     [[t|Fragment '[IotaVector, IotaEntity] '[]|]]
- )
+$(mkIotaFragExpr "HopperPurification" [pattern| SOUTH_WEST qqqeawqwawq |] [[t|forall a. Fragment '[a] '[IotaAnyList]|]])
 
-$( mkIotaFrag
-     "Inculcate"
-     [pattern| EAST wwaqqqqqeqdedwwqwqwwdedwwqwqw |]
-     [[t|forall bs. Fragment '[IotaExec '[] bs] '[]|]]
- )
+-- Hotbar
 
-$( mkIotaFrag
-     "EvokerReflection"
-     [pattern| EAST wwaqqqqqeeaqawwewewwaqawwewew |]
-     [[t|Fragment '[] '[IotaNumber]|]]
- )
+$(mkIotaFragExpr "HandyReflection" [pattern| EAST qwawqwa |] [[t|Fragment '[] '[IotaNumber]|]])
+$(mkIotaFragExpr "Switch" [pattern| WEST dwewdwe |] [[t|Fragment '[IotaNumber] '[]|]])
 
-$( mkIotaFrag
-     "SimulateFirework"
-     [pattern| SOUTH_WEST dedwaqwqqwqa |]
-     [[t|Fragment '[IotaNumber, IotaVector, IotaVector] '[]|]]
- )
+-- Lesser Sentinels
 
-$( mkIotaFrag
+$(mkIotaFragExpr "DeploySentinels" [pattern| EAST aeaae |] [[t|Fragment '[IotaList IotaVector] '[]|]])
+$(mkIotaFragExpr "InfiltrationReflection" [pattern| WEST dqddq |] [[t|Fragment '[] '[IotaList IotaVector]|]])
+
+-- Pyrotechnics
+
+$( mkIotaFragExpr
      "ConjureFirework"
      [pattern| SOUTH_WEST dedwaqwwawwqa |]
      [ [t|
          Fragment
-           '[IotaBoolean, IotaBoolean, IotaList IotaDye, IotaList IotaDye, IotaNumber, IotaNumber, IotaVector, IotaVector]
+           '[IotaBoolean, IotaBoolean, IotaList IotaVector, IotaList IotaVector, IotaNumber, IotaNumber, IotaVector, IotaVector]
            '[]
          |]
      ]
  )
 
-$( mkIotaFrag
-     "ClearVision"
-     [pattern| WEST eeeeeqaqeeeee |]
-     [[t|Fragment '[] '[]|]]
- )
+-- Sentinel Defense
 
-$( mkIotaFrag
-     "PierceDarkness"
-     [pattern| WEST edewawede |]
-     [[t|Fragment '[] '[]|]]
- )
-
-$( mkIotaFrag
-     "VisualizeForms"
-     [pattern| WEST eedwwawwdee |]
-     [[t|Fragment '[] '[]|]]
- )
-
-$( mkIotaFrag
-     "BroadcastVision"
-     [pattern| WEST wewdwewwawwewdwew |]
-     [[t|Fragment '[] '[]|]]
- )
-
-$( mkIotaFrag
-     "IdentifyImportance"
-     [pattern| WEST eewdweqaqewdwee |]
-     [[t|Fragment '[] '[]|]]
- )
-
-$( mkIotaFrag
-     "SplitVision"
-     [pattern| NORTH_EAST qaqdedaedqqdedaqaedeqd |]
-     [[t|Fragment '[] '[]|]]
- )
-
-$( mkIotaFrag
-     "MinersPurification"
-     [pattern| EAST qaqqqqqeeeeedq |]
-     [[t|Fragment '[IotaIdentifier] '[IotaNumber]|]]
- )
-
-$( mkIotaFrag
-     "DemomansPurification"
-     [pattern| EAST qaqqqqqewaawaawa |]
-     [[t|Fragment '[IotaIdentifier] '[IotaNumber]|]]
- )
-
-$( mkIotaFrag
-     "PlumbersPurification"
-     [pattern| SOUTH_EAST edeeeeeqwqqqqw |]
-     [[t|Fragment '[IotaVector] '[IotaBoolean]|]]
- )
-
-$( mkIotaFrag
-     "OrientationPurification"
-     [pattern| EAST qaqqqqqqwadeeed |]
+$( mkIotaFragExpr
+     "VigilancePurification"
+     [pattern| NORTH_EAST dwqwaeawaeqqqwqwqqw |]
      [[t|Fragment '[IotaVector] '[IotaVector]|]]
  )
+$(mkIotaFragExpr "ExorciseSentinel" [pattern| EAST wdqdwdqedwewaawewd |] [[t|Fragment '[IotaVector] '[]|]])
 
-$( mkIotaFrag
-     "FarmersPurification"
-     [pattern| EAST qaqqqqqwaea |]
-     [[t|Fragment '[IotaVector] '[IotaNumber]|]]
+-- Shaders
+
+$(mkIotaFragExpr "ClearVision" [pattern| WEST eeeeeqaqeeeee |] [[t|Fragment '[] '[]|]])
+$(mkIotaFragExpr "PierceDarkness" [pattern| WEST edewawede |] [[t|Fragment '[] '[]|]])
+$(mkIotaFragExpr "VisualizeForms" [pattern| WEST eedwwawwdee |] [[t|Fragment '[] '[]|]])
+$(mkIotaFragExpr "BroadcastVision" [pattern| WEST wewdwewwawwewdwew |] [[t|Fragment '[] '[]|]])
+$(mkIotaFragExpr "IdentifyImportance" [pattern| WEST eewdweqaqewdwee |] [[t|Fragment '[] '[]|]])
+$(mkIotaFragExpr "SplitVision" [pattern| NORTH_EAST qaqdedaedqqdedaqaedeqd |] [[t|Fragment '[] '[]|]])
+
+-- Horrible
+$( mkIotaFragExpr
+     "Horrible"
+     [pattern| EAST wedqawqeewdeaqeewdeaqqedqawqqedqawqeedqawqqewdeaqeedqawqeewdeaqqewdeaqeewdeaqeedqawqqedqawqqewdeaqeedqawqeewdeaqqewdeaqeewdeaqeedqawqqedqawqqewdeaqqedqawqeewdeaqeewdeaqqedqawqqedqawqeedqawqqewdeaqqedqawqeewdeaqeewdeaqqedqawqqedqawqeedqawqqewdeaqeedqawqeewdeaqeewdeaqqedqawqqedqawqeedqawqqewdeaqqedqawqeewdeaqqewdeaqeewdeaqeedqawqqedqawqqewdeaqe |]
+     [[t|Fragment '[IotaVector] '[]|]]
  )
 
-$( mkIotaFrag
-     "GlowingPurification"
-     [pattern| EAST qaqqqqqwaeaeaeaeaea |]
-     [[t|Fragment '[IotaVector] '[IotaBoolean]|]]
+--- Specks
+
+-- Specks
+
+$( mkIotaFragExpr
+     "ConjureSpeck"
+     [pattern| SOUTH_WEST ade |]
+     [[t|forall a. Fragment '[IotaVector, IotaVector, a] '[IotaEntity]|]]
+ )
+$(mkIotaFragExpr "DismissSpecklike" [pattern| SOUTH_WEST adeaqde |] [[t|Fragment '[IotaEntity] '[]|]])
+$(mkIotaFragExpr "ExecuteSpecklike" [pattern| SOUTH_WEST adeqqaawdd |] [[t|Fragment '[IotaNumber, IotaEntity] '[]|]])
+$(mkIotaFragExpr "MoveSpecklike" [pattern| SOUTH_WEST adeqaa |] [[t|Fragment '[IotaVector, IotaEntity] '[]|]])
+$(mkIotaFragExpr "RotateSpecklike" [pattern| SOUTH_WEST adeaw |] [[t|Fragment '[IotaVector, IotaEntity] '[]|]])
+$(mkIotaFragExpr "RollSpeck" [pattern| SOUTH_WEST adeqqqqq |] [[t|Fragment '[IotaNumber, IotaEntity] '[]|]])
+$(mkIotaFragExpr "ResizeSpecklike" [pattern| SOUTH_WEST adeeqed |] [[t|Fragment '[IotaNumber, IotaEntity] '[]|]])
+$(mkIotaFragExpr "ThickenSpeck" [pattern| SOUTH_WEST adeeqw |] [[t|Fragment '[IotaNumber, IotaEntity] '[]|]])
+$(mkIotaFragExpr "ColorSpeck" [pattern| SOUTH_WEST adeqqaq |] [[t|Fragment '[IotaPigment, IotaEntity] '[]|]])
+
+-- Strands
+
+$(mkIotaFragExpr "ConjureStrand" [pattern| SOUTH_EAST daq |] [[t|Fragment '[IotaVector] '[IotaEntity]|]])
+$( mkIotaFragExpr
+     "HandwritingPurification"
+     [pattern| NORTH_EAST eadqqqa |]
+     [[t|Fragment '[IotaPattern] '[IotaList IotaVector]|]]
  )
 
-$( mkIotaFrag
-     "LockPurification"
-     [pattern| EAST qaqqqeaqwdewd |]
-     [[t|Fragment '[IotaVector] '[IotaBoolean]|]]
- )
+-- Meshes
 
-$( mkIotaFrag
-     "AnglePurification"
-     [pattern| EAST qaqqqqqqwqqwqd |]
-     [[t|Fragment '[IotaVector] '[IotaNumber]|]]
- )
+$(mkIotaFragExpr "ConjureMesh" [pattern| EAST qaqqqqqwqqqdeeweweeaeewewee |] [[t|Fragment '[IotaVector] '[IotaEntity]|]])
 
-$( mkIotaFrag
-     "BunchingPurification"
-     [pattern| EAST qaqqqqqweeeeedeeqaqdeee |]
-     [[t|Fragment '[IotaVector] '[IotaNumber]|]]
- )
+--- Great Spells
 
-$( mkIotaFrag
-     "BookPurification"
-     [pattern| EAST qaqqqqqqeawa |]
-     [[t|Fragment '[IotaVector] '[IotaBoolean]|]]
- )
+-- Charm
 
-$( mkIotaFrag
-     "ThaumaturgistsPurification"
-     [pattern| WEST waqeaeqawqwawaw |]
-     [[t|Fragment '[IotaEntity] '[]|]]
+$( mkGreatIotaFragExpr
+     "Charm"
+     "Charm"
+     [pattern| SOUTH_EAST edeeeeeqaaqeeeadweeqeeqdqeeqeeqde |]
+     [[t|Fragment '[IotaAny, IotaList IotaAny, IotaList IotaAny, IotaNumber, IotaList IotaAny] '[]|]]
  )
+$(mkIotaFragExpr "LEDGambit" [pattern| NORTH_EAST qaqqdwdwd |] [[t|Fragment '[IotaVector] '[]|]])
+$(mkIotaFragExpr "Discharm" [pattern| NORTH_EAST qaqwddaaeawaea |] [[t|Fragment '[IotaEntity] '[]|]])
+$(mkIotaFragExpr "CharmedGambit" [pattern| NORTH_EAST waqqqqqedeqdqdqdqdqe |] [[t|forall a. Fragment '[a] '[]|]])
+$(mkIotaFragExpr "CharmedReflection" [pattern| NORTH_EAST waqqqqqeaqeaeaeaeaeq |] [[t|Fragment '[] '[IotaAny]|]])
+$(mkIotaFragExpr "CharmedGambitII" [pattern| SOUTH_EAST edewqaqqdeeeee |] [[t|forall a. Fragment '[a] '[]|]])
+$(mkIotaFragExpr "CharmedReflectionII" [pattern| NORTH_EAST qaqwedeeaqqqqq |] [[t|Fragment '[] '[IotaAny]|]])
 
-$( mkIotaFrag
-     "CharmDistillation"
-     [pattern| WEST waqwwqaweede |]
-     [[t|Fragment '[IotaIdentifier, IotaEntity] '[IotaNumber]|]]
- )
+-- Greater Blink
 
-$( mkIotaFrag
-     "CalipersPurification"
-     [pattern| NORTH_WEST dwe |]
-     [[t|Fragment '[IotaEntity] '[IotaNumber]|]]
- )
-
-$( mkIotaFrag
-     "TheodolitePurification"
-     [pattern| EAST wqaa |]
-     [[t|Fragment '[IotaEntity] '[IotaVector]|]]
- )
-
-$( mkIotaFrag
-     "VitalityPurification"
-     [pattern| SOUTH_EAST wddwaqqwawq |]
-     [[t|Fragment '[IotaEntity] '[IotaNumber]|]]
- )
-
-$( mkIotaFrag
-     "FitnessPurification"
-     [pattern| SOUTH_EAST wddwwawaeqwawq |]
-     [[t|Fragment '[IotaEntity] '[IotaNumber]|]]
- )
-
-$( mkIotaFrag
-     "SuffocationPurification"
-     [pattern| EAST wwaade |]
-     [[t|Fragment '[IotaEntity] '[IotaNumber]|]]
- )
-
-$( mkIotaFrag
-     "LungPurification"
-     [pattern| EAST wwaadee |]
-     [[t|Fragment '[IotaEntity] '[IotaNumber]|]]
- )
-
-$( mkIotaFrag
-     "HungerPurification"
-     [pattern| WEST qqqadaddw |]
-     [[t|Fragment '[IotaEntity] '[IotaNumber]|]]
- )
-
-$( mkIotaFrag
-     "StaminaPurification"
-     [pattern| WEST qqqadaddq |]
-     [[t|Fragment '[IotaEntity] '[IotaNumber]|]]
- )
-
-$( mkIotaFrag
-     "InfernoPurification"
-     [pattern| EAST qqwaqda |]
-     [[t|Fragment '[IotaEntity] '[IotaBoolean]|]]
- )
-
-$( mkIotaFrag
-     "InfernoPurificationII"
-     [pattern| WEST eewdead |]
-     [[t|Fragment '[IotaEntity] '[IotaNumber]|]]
- )
-
-$( mkIotaFrag
-     "EndermansPurification"
-     [pattern| SOUTH_WEST qqqqwaadq |]
-     [[t|Fragment '[IotaEntity] '[IotaBoolean]|]]
- )
-
-$( mkIotaFrag
-     "YouthPurification"
-     [pattern| SOUTH_WEST awaqdwaaw |]
-     [[t|Fragment '[IotaEntity] '[IotaBoolean]|]]
- )
-
-$( mkIotaFrag
-     "ReproductionPurification"
-     [pattern| EAST awaaqdqaawa |]
-     [[t|Fragment '[IotaEntity] '[IotaBoolean]|]]
- )
-
-$( mkIotaFrag
-     "SlothsPurification"
-     [pattern| NORTH_WEST aqaew |]
-     [[t|Fragment '[IotaEntity] '[IotaBoolean]|]]
- )
-
-$( mkIotaFrag
-     "RacersPurification"
-     [pattern| WEST eaq |]
-     [[t|Fragment '[IotaEntity] '[IotaBoolean]|]]
- )
-
-$( mkIotaFrag
-     "AmbitPurification"
-     [pattern| EAST wawaw |]
-     [ [t|Fragment '[IotaVector] '[IotaBoolean]|]
-     , [t|Fragment '[IotaEntity] '[IotaBoolean]|]
-     ]
- )
-
-$( mkIotaFrag
-     "StaffReflection"
-     [pattern| NORTH_EAST waaq |]
-     [[t|Fragment '[] '[IotaBoolean]|]]
- )
-
-$( mkIotaFrag
-     "DeviceReflection"
-     [pattern| NORTH_EAST waaqwwaqqqqq |]
-     [[t|Fragment '[] '[IotaBoolean]|]]
- )
-
--- Note: Repeated name in source, appending "II"
-$( mkIotaFrag
-     "TchotchkeReflectionII"
-     [pattern| NORTH_EAST waaqwwaqqqqqeaqeaeaeaeaeq |]
-     [[t|Fragment '[] '[IotaBoolean]|]]
- )
-
-$( mkIotaFrag
-     "EvocationReflection"
-     [pattern| NORTH_EAST waaqeaqa |]
-     [[t|Fragment '[] '[IotaBoolean]|]]
- )
-
-$( mkIotaFrag
-     "WishReflection"
-     [pattern| NORTH_EAST waaqdqdded |]
-     [[t|Fragment '[] '[IotaBoolean]|]]
- )
-
-$( mkIotaFrag
-     "GrandWishReflection"
-     [pattern| NORTH_EAST waaqqqaqwdd |]
-     [[t|Fragment '[] '[IotaBoolean]|]]
- )
-
-$( mkIotaFrag
-     "ConstructedReflection"
-     [pattern| NORTH_EAST waaqdeaqwqae |]
-     [[t|Fragment '[] '[IotaBoolean]|]]
- )
-
-$( mkIotaFrag
-     "DexterityReflection"
-     [pattern| NORTH_EAST qaqqqwaaq |]
-     [[t|Fragment '[] '[IotaBoolean]|]]
- )
-
-$( mkIotaFrag
-     "EdibilityPurification"
-     [pattern| WEST adaqqqdd |]
-     [[t|Fragment '[IotaIdentifier] '[IotaBoolean]|]]
- )
-
-$( mkIotaFrag
-     "CaloriePurification"
-     [pattern| WEST adaqqqddqe |]
-     [[t|Fragment '[IotaIdentifier] '[IotaNumber]|]]
- )
-
-$( mkIotaFrag
-     "SatiationPurification"
-     [pattern| WEST adaqqqddqw |]
-     [[t|Fragment '[IotaIdentifier] '[IotaNumber]|]]
- )
-
-$( mkIotaFrag
-     "FleshPurification"
-     [pattern| WEST adaqqqddaed |]
-     [[t|Fragment '[IotaIdentifier] '[IotaBoolean]|]]
- )
-
-$( mkIotaFrag
-     "DessertPurification"
-     [pattern| WEST adaqqqddaq |]
-     [[t|Fragment '[IotaIdentifier] '[IotaBoolean]|]]
- )
-
-$( mkIotaFrag
-     "DetectivesPurification"
-     [pattern| NORTH_EAST qqqqqe |]
-     [[t|forall a. Fragment '[a] '[IotaIdentifier]|]]
- )
-
-$( mkIotaFrag
-     "RecognizersPurification"
-     [pattern| WEST eeeeeq |]
-     [[t|Fragment '[IotaEntity] '[IotaIdentifier]|]]
- )
-
-$( mkIotaFrag
-     "ClassifiersPurification"
-     [pattern| WEST edqdeq |]
-     [[t|forall a. Fragment '[a] '[IotaIdentifier]|]]
- )
-
-$( mkIotaFrag
-     "ToolPurification"
-     [pattern| NORTH_EAST qaqqqq |]
-     [[t|Fragment '[IotaEntity] '[IotaIdentifier]|]]
- )
-
-$( mkIotaFrag
-     "AccessoryPurification"
-     [pattern| NORTH_WEST edeeee |]
-     [[t|Fragment '[IotaEntity] '[IotaIdentifier]|]]
- )
-
-$( mkIotaFrag
-     "StoragePurification"
-     [pattern| EAST qaqqwqqqw |]
-     [[t|Fragment '[IotaEntity] '[IotaNumber]|]]
- )
-
-$( mkIotaFrag
-     "WarehousePurification"
-     [pattern| WEST edeeweeew |]
-     [[t|Fragment '[IotaIdentifier] '[IotaNumber]|]]
- )
-
-$( mkIotaFrag
-     "DeteriorationPurification"
-     [pattern| NORTH_EAST eeweeewdeq |]
-     [[t|Fragment '[IotaEntity] '[IotaNumber]|]]
- )
-
-$( mkIotaFrag
-     "FragilityPurification"
-     [pattern| NORTH_WEST qqwqqqwaqe |]
-     [[t|Fragment '[IotaIdentifier] '[IotaNumber]|]]
- )
-
-$( mkIotaFrag
-     "DiagnosisPurification"
-     [pattern| SOUTH_WEST wqqq |]
-     [[t|Fragment '[IotaEntity] '[IotaList IotaIdentifier]|]]
- )
-
-$( mkIotaFrag
-     "PrescriptionPurification"
-     [pattern| SOUTH_WEST wqqqadee |]
-     [[t|Fragment '[IotaEntity] '[IotaList IotaIdentifier]|]]
- )
-
-$( mkIotaFrag
-     "ConditionPurification"
-     [pattern| SOUTH_WEST wqqqaawd |]
-     [[t|Fragment '[IotaIdentifier] '[IotaNumber]|]]
- )
-
-$( mkIotaFrag
-     "ConcentrationDistillation"
-     [pattern| SOUTH_WEST wqqqaqwa |]
-     [[t|Fragment '[IotaIdentifier, IotaEntity] '[IotaNumber]|]]
- )
-
-$( mkIotaFrag
-     "ClearanceDistillation"
-     [pattern| SOUTH_WEST wqqqaqwdd |]
-     [[t|Fragment '[IotaIdentifier, IotaEntity] '[IotaNumber]|]]
- )
-
-$( mkIotaFrag
-     "LuminancePurification"
-     [pattern| SOUTH_WEST wqwqwqwqwqwaeqqqqaeqaeaeaeaw |]
-     [[t|Fragment '[IotaVector] '[IotaNumber]|]]
- )
-
-$( mkIotaFrag
-     "MeterologistsReflection"
-     [pattern| WEST eweweweweweeeaedqdqde |]
-     [[t|Fragment '[] '[IotaNumber]|]]
- )
-
-$( mkIotaFrag
-     "BatteryPurification"
-     [pattern| EAST qwqwqwqwqwqqwwaadwdaaww |]
-     [[t|Fragment '[IotaVector] '[IotaNumber]|]]
- )
-
-$( mkIotaFrag
-     "PeripheralPurification"
-     [pattern| WEST eweweweweweewwddawaddww |]
-     [[t|Fragment '[IotaVector] '[IotaNumber]|]]
- )
-
-$( mkIotaFrag
-     "CircadianReflection"
-     [pattern| SOUTH_EAST wwawwawwqqawwdwwdwwaqwqwqwqwq |]
-     [[t|Fragment '[] '[IotaNumber]|]]
- )
-
-$( mkIotaFrag
-     "TemporalReflection"
-     [pattern| SOUTH_EAST wddwaqqwqaddaqqwddwaqqwqaddaq |]
-     [[t|Fragment '[] '[IotaNumber]|]]
- )
-
-$( mkIotaFrag
-     "GeographicalPurification"
-     [pattern| WEST qwqwqawdqqaqqdwaqwqwq |]
-     [[t|Fragment '[] '[IotaIdentifier]|]]
- )
-
-$( mkIotaFrag
-     "PlaneReflection"
-     [pattern| WEST qwqwqwqwqwqqaedwaqd |]
-     [[t|Fragment '[] '[IotaIdentifier]|]]
- )
-
-$( mkIotaFrag
-     "DistortionReflection"
-     [pattern| SOUTH_WEST aqwawqwqqwqwqwqwqwq |]
-     [[t|Fragment '[] '[IotaBoolean]|]]
- )
-
-$( mkGreatIotaFrag
+$( mkGreatIotaFragExpr
      "GreaterBlink"
      "Greater Blink"
      [pattern| SOUTH_WEST wqawawaqwqwqawawaqw |]
      [[t|Fragment '[IotaVector] '[]|]]
  )
-
-$( mkGreatIotaFrag
-     "ConjureMesh"
-     "Conjure Mesh"
-     [pattern| EAST qaqqqqqqwqqqdeeweweeaeewewee |]
-     [[t|Fragment '[IotaVector] '[IotaEntity]|]]
- )
-
-$( mkGreatIotaFrag
-     "WeaveMesh"
-     "Weave Mesh"
-     [pattern| EAST qaqqqqqqwqqqdeewewee |]
-     [[t|Fragment '[IotaList IotaVector, IotaEntity] '[]|]]
- )
-
-$( mkGreatIotaFrag
-     "TanglePurification"
-     "Tangle Purification"
-     [pattern| SOUTH_WEST edeeeeeweeeaqqwqwqq |]
-     [[t|Fragment '[IotaEntity] '[IotaList IotaVector]|]]
- )
-
--- special
-
-iotaSehkmetsGambit :: forall n. KnownNat n => IotaPattern
-iotaSehkmetsGambit = IotaPattern $ Pattern DirectionSW $ baseAngles <> take nInt (cycle tailAngles)
- where
-  baseAngles = [angles| qaqdd |]
-  tailAngles = [angles| qe |]
-  nInt :: Int
-  nInt = fromInteger $ naturalToInteger $ natVal $ Proxy @n
-
-type family FragSehkmetsGambit n (as :: [Type]) where
-  FragSehkmetsGambit 0 as = '[]
-  FragSehkmetsGambit n (a ': as) = a ': (FragSehkmetsGambit (n - 1) as)
-
-fragSehkmetsGambit :: forall n as. KnownNat n => Fragment as (FragSehkmetsGambit n as)
-fragSehkmetsGambit = fragSingleton $ iotaSehkmetsGambit @n
