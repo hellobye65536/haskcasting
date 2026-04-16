@@ -7,45 +7,45 @@ module Haskcasting.Patterns.Hexcassettes where
 import Haskcasting.Fragment (Fragment)
 import Haskcasting.Iota (IotaExec, IotaNumber, IotaAnyList)
 import Haskcasting.Pattern (pattern)
-import Haskcasting.Patterns.TH (mkIotaFrag)
+import Haskcasting.ExprLang.TH (mkIotaFragExpr)
 
-$( mkIotaFrag
+$( mkIotaFragExpr
      "Enqueue"
      [pattern| EAST qeqwqwqwqwqeqaweqqqqqwweeweweewqdwwewewwewweweww |]
      [[t|forall a bs. Fragment '[IotaExec '[] bs, IotaNumber, a] '[]|]]
  )
 
-$( mkIotaFrag
+$( mkIotaFragExpr
      "Dequeue"
      [pattern| WEST eqeweweweweqedwqeeeeewwqqwqwqqweawwqwqwwqwwqwqww |]
      [[t|forall a. Fragment '[a] '[]|]]
  )
 
-$( mkIotaFrag
+$( mkIotaFragExpr
      "Disqueue"
      [pattern| WEST eqeweweweweqedwqeeeeewwqqwqwqqw |]
      [[t|Fragment '[] '[]|]]
  )
 
-$( mkIotaFrag
+$( mkIotaFragExpr
      "ThreadingReflection"
      [pattern| EAST qeqwqwqwqwqeqaweqqqqq |]
      [[t|Fragment '[] '[IotaNumber]|]]
  )
 
-$( mkIotaFrag
+$( mkIotaFragExpr
      "ThreadingReflectionII"
      [pattern| EAST qeqwqwqwqwqeqaweqqqqqwweeweweew |]
      [[t|Fragment '[] '[IotaNumber]|]]
  )
 
-$( mkIotaFrag
+$( mkIotaFragExpr
      "ProgramPurification"
      [pattern| WEST eqeweweweweqedwqeeeee |]
      [[t|forall a. Fragment '[a] '[IotaAnyList]|]]
  )
 
-$( mkIotaFrag
+$( mkIotaFragExpr
      "ProgramPurificationII"
      [pattern| WEST eqeweweweweqedwqeeeeedww |]
      [[t|forall a. Fragment '[a] '[IotaNumber]|]]

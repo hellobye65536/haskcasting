@@ -24,5 +24,6 @@ library
         Haskcasting.Patterns.Hexcassettes
     build-depends:
         haskcasting,
+        haskcasting-exprlang-core,
         text,
         containers,
