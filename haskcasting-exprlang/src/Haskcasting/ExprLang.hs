@@ -14,7 +14,7 @@ module Haskcasting.ExprLang (
   callUnsafe,
   cast,
   unsafeCast,
-  (+|+),
+  (%:),
   --
   lambdaCall,
   embedIntroRetro,
@@ -93,7 +93,7 @@ lambdaCall ::
   (forall s. Expr blk '[IotaExec (HAppendListR a s) (HAppendListR b s)]) ->
   Expr blk a ->
   Expr blk b
-lambdaCall fun arg = callUnsafe (anySeqLit iotaHermesGambit) (fun +|+ arg)
+lambdaCall fun arg = callUnsafe (anySeqLit iotaHermesGambit) (fun %: arg)
 
 embedIntroRetro :: EmbedIntroRetro a => a -> Expr blk '[a]
 embedIntroRetro x = intro $ Embed.embedIntroRetro x

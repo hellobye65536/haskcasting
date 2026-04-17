@@ -38,7 +38,7 @@ library
     exposed-modules:
         Haskcasting.ExprLang
         Haskcasting.ExprLang.Ops
-        Haskcasting.ExprLang.Infix
+        Haskcasting.ExprLang.Macros
 
 test-suite ops
     import:

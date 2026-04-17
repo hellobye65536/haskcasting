@@ -14,7 +14,7 @@ module Haskcasting.ExprLang.Core (
   callUnsafe,
   cast,
   unsafeCast,
-  (+|+),
+  (%:),
   BlockOpts (..),
   defaultBlockOpts,
   --
@@ -51,7 +51,7 @@ instance Show RawExpr where
     (Merge l r) ->
       showParen (p > 6) $
         showsPrec 7 l
-          . showString " +|+ "
+          . showString " %: "
           . showsPrec 6 r
     (Var v) ->
       showParen (p > 10) $
@@ -86,9 +86,9 @@ callUnsafe ::
   Expr blk b
 callUnsafe fun (Expr arg) = Expr $ Call fun arg $ hListLen @b
 
-infixr 6 +|+
-(+|+) :: Expr blk a -> Expr blk b -> Expr blk (HAppendListR a b)
-Expr a +|+ Expr b = Expr $ Merge a b
+infixr 6 %:
+(%:) :: Expr blk a -> Expr blk b -> Expr blk (HAppendListR a b)
+Expr a %: Expr b = Expr $ Merge a b
 
 class ExprCast bs as where
   cast :: Expr blk as -> Expr blk bs
