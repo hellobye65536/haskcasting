@@ -8,7 +8,7 @@ module Haskcasting.Embed (
   iotaRetrospection,
   iotaEvanition,
   escapedPatterns,
-  embedIntroRetro,
+  EmbedIntroRetro (embedIntroRetro),
   embedConsideration,
 ) where
 

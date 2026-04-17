@@ -15,6 +15,8 @@ module Haskcasting.ExprLang.Core (
   cast,
   unsafeCast,
   (+|+),
+  BlockOpts (..),
+  defaultBlockOpts,
   --
   RawExpr (..),
 ) where
@@ -88,14 +90,25 @@ infixr 6 +|+
 (+|+) :: Expr blk a -> Expr blk b -> Expr blk (HAppendListR a b)
 Expr a +|+ Expr b = Expr $ Merge a b
 
-class ExprCast as bs where
+class ExprCast bs as where
   cast :: Expr blk as -> Expr blk bs
   cast = Expr . unwrapExpr
 instance ExprCast '[] '[]
-instance (IotaCast a b, ExprCast as bs) => ExprCast (a ': as) (b ': bs)
+instance (IotaCast a b, ExprCast bs as) => ExprCast (b ': bs) (a ': as)
 
-class ExprUnsafeCast as bs where
+class ExprUnsafeCast bs as where
   unsafeCast :: Expr blk as -> Expr blk bs
   unsafeCast = Expr . unwrapExpr
 instance ExprUnsafeCast '[] '[]
-instance ExprUnsafeCast as bs => ExprUnsafeCast (a ': as) (b ': bs)
+instance ExprUnsafeCast bs as => ExprUnsafeCast (b ': bs) (a ': as)
+
+data BlockOpts = BlockOpts
+  { boUseIntroRetro :: Bool
+  , boAvoidDynamicPatterns :: Bool
+  }
+defaultBlockOpts :: BlockOpts
+defaultBlockOpts =
+  BlockOpts
+    { boUseIntroRetro = False
+    , boAvoidDynamicPatterns = False
+    }

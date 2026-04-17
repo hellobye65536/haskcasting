@@ -18,16 +18,17 @@ common common
 
 common build-depends
     build-depends:
+        text,
+        vector,
+        containers,
+        primitive,
+        mtl,
+        HList,
+        ilist,
         template-haskell,
         haskcasting,
         haskcasting-exprlang-core,
         haskcasting-hexcasting,
-        text,
-        containers,
-        vector,
-        HList,
-        mtl,
-        ilist,
 
 library
     import:
@@ -37,8 +38,7 @@ library
     exposed-modules:
         Haskcasting.ExprLang
         Haskcasting.ExprLang.Ops
-        -- Haskcasting.ExprLang.TH
-        -- Haskcasting.ExprLang.Hexcasting
+        Haskcasting.ExprLang.Infix
 
 test-suite ops
     import:

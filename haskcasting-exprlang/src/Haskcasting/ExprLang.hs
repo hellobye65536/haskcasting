@@ -12,27 +12,42 @@ module Haskcasting.ExprLang (
   introUnsafe,
   call,
   callUnsafe,
-  lambdaCall,
   cast,
   unsafeCast,
   (+|+),
+  --
+  lambdaCall,
+  embedIntroRetro,
+  embedConsideration,
   -- block
+  BlockOpts (..),
+  defaultBlockOpts,
   ExprBlockT,
   ExprBlockM,
   blockBind,
   blockBindTup,
+  --
   block,
   blockTup,
   blockT,
   blockTupT,
+  blockOpt,
+  blockTupOpt,
+  blockTOpt,
+  blockTupTOpt,
+  --
   lambda,
   lambdaTup,
   lambdaT,
   lambdaTupT,
+  lambdaOpt,
+  lambdaTupOpt,
+  lambdaTOpt,
+  lambdaTupTOpt,
 ) where
 
 import Control.Monad (foldM_, forM_)
-import Control.Monad.Reader (MonadReader (ask), ReaderT (runReaderT))
+import Control.Monad.Reader (MonadReader (ask), ReaderT (runReaderT), runReader)
 import Control.Monad.ST (ST, runST)
 import Control.Monad.State.Strict (MonadState (get), MonadTrans (lift), StateT, execStateT, modify')
 import Data.Functor.Identity (Identity (runIdentity))
@@ -42,18 +57,11 @@ import Data.HList (
  )
 import Data.Kind (Type)
 import Data.Maybe (fromMaybe)
-import Data.STRef (
-  STRef,
-  modifySTRef',
-  newSTRef,
-  readSTRef,
-  writeSTRef,
- )
 import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
 import Data.Vector.Unboxed.Mutable qualified as VUM
 
-import Haskcasting.Embed (iotaConsideration)
+import Haskcasting.Embed (EmbedIntroRetro, iotaConsideration)
 import Haskcasting.ExprLang.Ops (
   Fish (..),
   FuncOp (..),
@@ -63,7 +71,7 @@ import Haskcasting.ExprLang.Ops (
   optimizeOps,
  )
 import Haskcasting.Fragment (Fragment (Fragment))
-import Haskcasting.Iota (IotaExec, IotaList (IotaList))
+import Haskcasting.Iota (IotaAny, IotaCast, IotaExec, IotaList (IotaList))
 import Haskcasting.Patterns.Hexcasting (
   iotaBookkeepersGambit,
   iotaFlocksDisintegration,
@@ -74,6 +82,9 @@ import Haskcasting.Patterns.Hexcasting (
  )
 import Haskcasting.Util (AnySeq, HListLen, anySeqLit, hListLen)
 
+import Control.Monad.Primitive (PrimMonad)
+import Data.Primitive.MutVar (MutVar, modifyMutVar', newMutVar, readMutVar, writeMutVar)
+import Haskcasting.Embed qualified as Embed
 import Haskcasting.ExprLang.Core
 
 lambdaCall ::
@@ -83,6 +94,12 @@ lambdaCall ::
   Expr blk a ->
   Expr blk b
 lambdaCall fun arg = callUnsafe (anySeqLit iotaHermesGambit) (fun +|+ arg)
+
+embedIntroRetro :: EmbedIntroRetro a => a -> Expr blk '[a]
+embedIntroRetro x = intro $ Embed.embedIntroRetro x
+
+embedConsideration :: IotaCast a IotaAny => a -> Expr blk '[a]
+embedConsideration x = intro $ Embed.embedConsideration x
 
 -- ==== block typedefs
 
@@ -96,7 +113,7 @@ blockStateDefault :: BlockState
 blockStateDefault = BlockState {bsBindings = [], bsBindingLen = 0}
 
 newtype ExprBlockT blk m a = ExprBlockT {unwrapExprBlockT :: StateT BlockState m a}
-  deriving (Functor, Applicative, Monad)
+  deriving (Functor, Applicative, Monad, MonadTrans)
 type ExprBlockM blk a = ExprBlockT blk Identity a
 
 bsGetBindingLen :: Monad m => ExprBlockT blk m Int
@@ -180,54 +197,51 @@ blockBindTup ::
   ExprBlockT blk m (HTuple (ExprSplit blk xs))
 blockBindTup = fmap (exprSplitTuple @xs @blk) . blockBind
 
-block ::
-  forall arg ret s.
+type BlockConstraint arg ret =
   ( HListLen arg
   , HListLen ret
   , MkExprVars arg
   , HListLen arg
-  ) =>
+  )
+
+type LambdaConstraint cap arg ret inits =
+  ( HListLen cap
+  , HListLen arg
+  , HListLen ret
+  , HAppendListR cap arg ~ inits
+  , MkExprVars inits
+  , HListLen inits
+  )
+
+block ::
+  forall arg ret s.
+  BlockConstraint arg ret =>
   (forall blk. HList (ExprSplit blk arg) -> ExprBlockM blk (Expr blk ret)) ->
   Fragment (HAppendListR arg s) (HAppendListR ret s)
 block blk = runIdentity $ blockT @arg @ret @s blk
 
 blockTup ::
   forall arg ret s.
-  ( HListLen arg
-  , HListLen ret
-  , MkExprVars arg
-  , HListLen arg
+  ( BlockConstraint arg ret
   , ExprSplitTuple arg
   ) =>
   (forall blk. HTuple (ExprSplit blk arg) -> ExprBlockM blk (Expr blk ret)) ->
   Fragment (HAppendListR arg s) (HAppendListR ret s)
-blockTup blk = runIdentity $ blockT @arg @ret @s blk'
- where
-  blk' :: forall blk. HList (ExprSplit blk arg) -> ExprBlockM blk (Expr blk ret)
-  blk' = blk . exprSplitTuple @arg @blk
+blockTup blk = runIdentity $ blockTupT @arg @ret @s blk
 
 blockT ::
   forall arg ret s m.
   ( Monad m
-  , HListLen arg
-  , HListLen ret
-  , MkExprVars arg
-  , HListLen arg
+  , BlockConstraint arg ret
   ) =>
   (forall blk. HList (ExprSplit blk arg) -> ExprBlockT blk m (Expr blk ret)) ->
   m (Fragment (HAppendListR arg s) (HAppendListR ret s))
-blockT blk = do
-  let blk' = fmap unwrapExpr $ blk @() $ mkExprVars @arg @() 0
-  insts <- lowerBlockT 0 (hListLen @arg) (hListLen @ret) blk'
-  pure $ Fragment insts
+blockT blk = blockTOpt @arg @ret @s defaultBlockOpts blk
 
 blockTupT ::
   forall arg ret s m.
   ( Monad m
-  , HListLen arg
-  , HListLen ret
-  , MkExprVars arg
-  , HListLen arg
+  , BlockConstraint arg ret
   , ExprSplitTuple arg
   ) =>
   (forall blk. HTuple (ExprSplit blk arg) -> ExprBlockT blk m (Expr blk ret)) ->
@@ -237,15 +251,54 @@ blockTupT blk = blockT @arg @ret @s blk'
   blk' :: forall blk. HList (ExprSplit blk arg) -> ExprBlockT blk m (Expr blk ret)
   blk' = blk . exprSplitTuple @arg @blk
 
+blockOpt ::
+  forall arg ret s.
+  BlockConstraint arg ret =>
+  BlockOpts ->
+  (forall blk. HList (ExprSplit blk arg) -> ExprBlockM blk (Expr blk ret)) ->
+  Fragment (HAppendListR arg s) (HAppendListR ret s)
+blockOpt opts blk = runIdentity $ blockTOpt @arg @ret @s opts blk
+
+blockTupOpt ::
+  forall arg ret s.
+  ( BlockConstraint arg ret
+  , ExprSplitTuple arg
+  ) =>
+  BlockOpts ->
+  (forall blk. HTuple (ExprSplit blk arg) -> ExprBlockM blk (Expr blk ret)) ->
+  Fragment (HAppendListR arg s) (HAppendListR ret s)
+blockTupOpt opts blk = runIdentity $ blockTupTOpt @arg @ret @s opts blk
+
+blockTOpt ::
+  forall arg ret s m.
+  ( Monad m
+  , BlockConstraint arg ret
+  ) =>
+  BlockOpts ->
+  (forall blk. HList (ExprSplit blk arg) -> ExprBlockT blk m (Expr blk ret)) ->
+  m (Fragment (HAppendListR arg s) (HAppendListR ret s))
+blockTOpt opts blk = do
+  let blk' = fmap unwrapExpr $ blk @() $ mkExprVars @arg @() 0
+  insts <- lowerBlockT opts 0 (hListLen @arg) (hListLen @ret) blk'
+  pure $ Fragment insts
+
+blockTupTOpt ::
+  forall arg ret s m.
+  ( Monad m
+  , BlockConstraint arg ret
+  , ExprSplitTuple arg
+  ) =>
+  BlockOpts ->
+  (forall blk. HTuple (ExprSplit blk arg) -> ExprBlockT blk m (Expr blk ret)) ->
+  m (Fragment (HAppendListR arg s) (HAppendListR ret s))
+blockTupTOpt opts blk = blockTOpt @arg @ret @s opts blk'
+ where
+  blk' :: forall blk. HList (ExprSplit blk arg) -> ExprBlockT blk m (Expr blk ret)
+  blk' = blk . exprSplitTuple @arg @blk
+
 lambda ::
   forall cap arg ret s inits blk'.
-  ( HListLen cap
-  , HListLen arg
-  , HListLen ret
-  , HAppendListR cap arg ~ inits
-  , MkExprVars inits
-  , HListLen inits
-  ) =>
+  LambdaConstraint cap arg ret inits =>
   Expr blk' cap ->
   (forall blk. HList (ExprSplit blk inits) -> ExprBlockM blk (Expr blk ret)) ->
   Expr blk' '[IotaExec (HAppendListR arg s) (HAppendListR ret s)]
@@ -253,38 +306,70 @@ lambda cap blk = runIdentity $ lambdaT @cap @arg @ret @s cap blk
 
 lambdaTup ::
   forall cap arg ret s inits blk'.
-  ( HListLen cap
-  , HListLen arg
-  , HListLen ret
-  , HAppendListR cap arg ~ inits
-  , MkExprVars inits
-  , HListLen inits
+  ( LambdaConstraint cap arg ret inits
   , ExprSplitTuple inits
   ) =>
   Expr blk' cap ->
   (forall blk. HTuple (ExprSplit blk inits) -> ExprBlockM blk (Expr blk ret)) ->
   Expr blk' '[IotaExec (HAppendListR arg s) (HAppendListR ret s)]
-lambdaTup cap blk = runIdentity $ lambdaT @cap @arg @ret @s cap blk'
- where
-  blk' :: forall blk. HList (ExprSplit blk inits) -> ExprBlockM blk (Expr blk ret)
-  blk' = blk . exprSplitTuple @inits @blk
+lambdaTup cap blk = runIdentity $ lambdaTupT @cap @arg @ret @s cap blk
 
 lambdaT ::
   forall cap arg ret s inits blk' m.
   ( Monad m
-  , HListLen cap
-  , HListLen arg
-  , HListLen ret
-  , HAppendListR cap arg ~ inits
-  , MkExprVars inits
-  , HListLen inits
+  , LambdaConstraint cap arg ret inits
   ) =>
   Expr blk' cap ->
   (forall blk. HList (ExprSplit blk inits) -> ExprBlockT blk m (Expr blk ret)) ->
   m (Expr blk' '[IotaExec (HAppendListR arg s) (HAppendListR ret s)])
-lambdaT (Expr cap) blk = do
+lambdaT expr blk = lambdaTOpt @cap @arg @ret @s defaultBlockOpts expr blk
+
+lambdaTupT ::
+  forall cap arg ret s inits blk' m.
+  ( Monad m
+  , LambdaConstraint cap arg ret inits
+  , ExprSplitTuple inits
+  ) =>
+  Expr blk' cap ->
+  (forall blk. HTuple (ExprSplit blk inits) -> ExprBlockT blk m (Expr blk ret)) ->
+  m (Expr blk' '[IotaExec (HAppendListR arg s) (HAppendListR ret s)])
+lambdaTupT cap blk = lambdaT @cap @arg @ret @s cap blk'
+ where
+  blk' :: forall blk. HList (ExprSplit blk inits) -> ExprBlockT blk m (Expr blk ret)
+  blk' = blk . exprSplitTuple @inits @blk
+
+lambdaOpt ::
+  forall cap arg ret s inits blk'.
+  LambdaConstraint cap arg ret inits =>
+  BlockOpts ->
+  Expr blk' cap ->
+  (forall blk. HList (ExprSplit blk inits) -> ExprBlockM blk (Expr blk ret)) ->
+  Expr blk' '[IotaExec (HAppendListR arg s) (HAppendListR ret s)]
+lambdaOpt opts cap blk = runIdentity $ lambdaTOpt @cap @arg @ret @s opts cap blk
+
+lambdaTupOpt ::
+  forall cap arg ret s inits blk'.
+  ( LambdaConstraint cap arg ret inits
+  , ExprSplitTuple inits
+  ) =>
+  BlockOpts ->
+  Expr blk' cap ->
+  (forall blk. HTuple (ExprSplit blk inits) -> ExprBlockM blk (Expr blk ret)) ->
+  Expr blk' '[IotaExec (HAppendListR arg s) (HAppendListR ret s)]
+lambdaTupOpt opts cap blk = runIdentity $ lambdaTupTOpt @cap @arg @ret @s opts cap blk
+
+lambdaTOpt ::
+  forall cap arg ret s inits blk' m.
+  ( Monad m
+  , LambdaConstraint cap arg ret inits
+  ) =>
+  BlockOpts ->
+  Expr blk' cap ->
+  (forall blk. HList (ExprSplit blk inits) -> ExprBlockT blk m (Expr blk ret)) ->
+  m (Expr blk' '[IotaExec (HAppendListR arg s) (HAppendListR ret s)])
+lambdaTOpt opts (Expr cap) blk = do
   let blk' = fmap unwrapExpr $ blk @() $ mkExprVars @inits @() 0
-  insts <- lowerBlockT (hListLen @cap) (hListLen @arg) (hListLen @ret) blk'
+  insts <- lowerBlockT opts (hListLen @cap) (hListLen @arg) (hListLen @ret) blk'
 
   let exprBase = Intro (anySeqLit (iotaConsideration, IotaList insts)) 1
       exprCap = cap `Merge` Intro (anySeqLit $ iotaNumericalReflection 1) 1 `Merge` exprBase
@@ -302,29 +387,33 @@ lambdaT (Expr cap) blk = do
         exprCap
         1
 
-lambdaTupT ::
+lambdaTupTOpt ::
   forall cap arg ret s inits blk' m.
   ( Monad m
-  , HListLen cap
-  , HListLen arg
-  , HListLen ret
-  , HAppendListR cap arg ~ inits
-  , MkExprVars inits
-  , HListLen inits
+  , LambdaConstraint cap arg ret inits
   , ExprSplitTuple inits
   ) =>
+  BlockOpts ->
   Expr blk' cap ->
   (forall blk. HTuple (ExprSplit blk inits) -> ExprBlockT blk m (Expr blk ret)) ->
   m (Expr blk' '[IotaExec (HAppendListR arg s) (HAppendListR ret s)])
-lambdaTupT cap blk = lambdaT @cap @arg @ret @s cap blk'
+lambdaTupTOpt opts cap blk = lambdaTOpt @cap @arg @ret @s opts cap blk'
  where
   blk' :: forall blk. HList (ExprSplit blk inits) -> ExprBlockT blk m (Expr blk ret)
   blk' = blk . exprSplitTuple @inits @blk
 
 -- ==== block lowering
 
-lowerBlockT :: forall m blk. Monad m => Int -> Int -> Int -> ExprBlockT blk m RawExpr -> m AnySeq
-lowerBlockT caps args rets blk = do
+lowerBlockT ::
+  forall m blk.
+  Monad m =>
+  BlockOpts ->
+  Int ->
+  Int ->
+  Int ->
+  ExprBlockT blk m RawExpr ->
+  m AnySeq
+lowerBlockT opts caps args rets blk = do
   blockState <- flip execStateT blockStateDefault $ unwrapExprBlockT $ do
     let capsInsts =
           case caps of
@@ -335,56 +424,51 @@ lowerBlockT caps args rets blk = do
     expr <- blk
     bsPushBinding (expr, rets)
   let ops = lowerBlockState blockState
-      ops' = optimizeOps ops
-      insts = lowerOps ops'
-  pure insts
+  pure $ flip runReader opts $ lowerOps =<< optimizeOps ops
 
 data LowerState s
   = LowerState
-  { lsOps :: STRef s [Op]
-  , lsVarStack :: STRef s (Seq Int)
+  { lsOps :: MutVar s [Op]
+  , lsVarStack :: MutVar s (Seq Int)
   , lsVarUses :: VUM.MVector s Int
   }
 
 newtype LowerM s a = LowerM (ReaderT (LowerState s) (ST s) a)
-  deriving (Functor, Applicative, Monad)
+  deriving (Functor, Applicative, Monad, PrimMonad)
 
 runLowerM :: VUM.MVector s Int -> LowerM s () -> ST s [Op]
 runLowerM lsVarUses (LowerM st) = do
-  lsOps <- newSTRef []
-  lsVarStack <- newSTRef Seq.empty
+  lsOps <- newMutVar []
+  lsVarStack <- newMutVar Seq.empty
   runReaderT st $ LowerState {lsOps, lsVarStack, lsVarUses}
-  fmap reverse $ readSTRef lsOps
-
-lowerMLift :: ST s a -> LowerM s a
-lowerMLift = LowerM . lift
+  fmap reverse $ readMutVar lsOps
 
 lowerMPushOp :: Op -> LowerM s ()
 lowerMPushOp op = LowerM $ do
   LowerState {lsOps} <- ask
-  lift $ modifySTRef' lsOps (op :)
+  modifyMutVar' lsOps (op :)
 
 lowerMPushVar :: Int -> LowerM s ()
 lowerMPushVar v = LowerM $ do
   LowerState {lsVarStack} <- ask
-  lift $ modifySTRef' lsVarStack (v Seq.<|)
+  modifyMutVar' lsVarStack (v Seq.<|)
 
 lowerMGetVarUses :: Int -> LowerM s Int
 lowerMGetVarUses v = LowerM $ do
   LowerState {lsVarUses} <- ask
-  lift $ VUM.read lsVarUses v
+  VUM.read lsVarUses v
 
 lowerMFishVar :: Int -> Int -> LowerM s Fish
 lowerMFishVar off v = LowerM $ do
   LowerState {lsVarStack, lsVarUses} <- ask
-  lsVarStack' <- lift $ readSTRef lsVarStack
-  uses <- lift $ VUM.read lsVarUses v
+  lsVarStack' <- readMutVar lsVarStack
+  uses <- VUM.read lsVarUses v
   let i = fromMaybe (error "missing variable in stack") $ v `Seq.elemIndexL` lsVarStack'
   VUM.modify lsVarUses (subtract 1) v
   if
     | uses <= 0 -> error "somehow got to zero uses"
     | uses == 1 -> do
-        lift $ modifySTRef' lsVarStack (Seq.deleteAt i)
+        lift $ modifyMutVar' lsVarStack (Seq.deleteAt i)
         pure $ Fish (i + off)
     | otherwise -> pure $ FishDup (i + off)
 
@@ -412,22 +496,22 @@ lowerBlockState bs = runST $ do
 
 lowerExpr :: RawExpr -> LowerM s ()
 lowerExpr expr = do
-  off <- lowerMLift $ newSTRef 0
+  off <- newMutVar 0
   let go = \case
         Intro is' len -> do
-          lowerMLift $ modifySTRef' off (+ len)
+          modifyMutVar' off (+ len)
           lowerMPushOp $ OpFunc $ FuncOp is' 0 len
         Call fun arg len -> do
           go arg
-          off' <- lowerMLift $ readSTRef off
+          off' <- readMutVar off
           lowerMPushOp $ OpFunc $ FuncOp fun off' len
-          lowerMLift $ writeSTRef off len
+          writeMutVar off len
         Merge l r -> do
           go r
           go l
         Var v -> do
-          off' <- lowerMLift $ readSTRef off
+          off' <- readMutVar off
           fish <- lowerMFishVar off' v
           lowerMPushOp $ OpStack $ OpFish fish
-          lowerMLift $ modifySTRef' off (+ 1)
+          modifyMutVar' off (+ 1)
   go expr
