@@ -18,7 +18,7 @@ name_replacements = [
     ("Purif.", "Purification"),
     ("Dstl.", "Distillation"),
     # ('Tan.', 'Tangent'),
-    # ('Arch.', 'Archgenie'),
+    ('Arch.', 'Archgenie'),
 ]
 
 known_types = {
@@ -34,13 +34,18 @@ known_types = {
     "pattern": "IotaPattern",
     #
     "entity": "IotaEntity",
+    "entity | null": "IotaEntity",
     "item entity": "IotaEntity",
     "player": "IotaEntity",
+    "animated scroll entity": "IotaEntity",
+    "speck entity": "IotaEntity",
     #
     "bool": "IotaBoolean",
     "boolean": "IotaBoolean",
     #
     "list": "IotaAnyList",
+    #
+    "identifier": "IotaIdentifier",
 }
 
 
