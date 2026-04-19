@@ -1,84 +1,126 @@
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE ViewPatterns #-}
 
 module Main (main) where
 
 import Data.Foldable (Foldable (toList))
-import Data.Maybe (fromJust)
+import Data.List (findIndices)
 import Data.Sequence qualified as Seq
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
-import Haskcasting.Embed (embedConsideration, embedIntroRetro, iotaConsideration, iotaIntrospection, iotaRetrospection)
+import Data.Typeable (Typeable)
+import Haskcasting.Embed (
+  EmbedIntroRetro,
+  embedConsideration,
+  embedIntroRetro,
+  iotaConsideration,
+  iotaIntrospection,
+  iotaRetrospection,
+ )
 import Haskcasting.Fragment
 import Haskcasting.Iota
 import Haskcasting.Iota.Moreiotas (IotaString (IotaString))
 import Haskcasting.Serialize (serializeA)
-import Haskcasting.Serialize.A (SerializeOptions (..), defaultSerializeOptions, serializePattern, strokeList)
+import Haskcasting.Serialize.A (
+  Inst (IBootstrapHalt, IBootstrapSemi),
+  SerializeOptions (..),
+  defaultSerializeOptions,
+  serializePattern,
+  strokeList,
+ )
+import Haskcasting.Util (AnySeqLit (anySeqLit))
 
 import Haskcasting.Compound.Hexcasting (mergeTopN)
 import Haskcasting.Patterns.Hexcasting
 import Haskcasting.Patterns.Hexical
 import Haskcasting.Patterns.Moreiotas
 
+data IotaSemiPlaceholder = IotaSemiPlaceholder
+instance Iota IotaSemiPlaceholder where
+  iotaShow _ = "<semi placeholder>"
+  iotaSerializeA _opt _ = Seq.singleton IBootstrapSemi
+
+data IotaHaltPlaceholder = IotaHaltPlaceholder
+instance Iota IotaHaltPlaceholder where
+  iotaShow _ = "<halt placeholder>"
+  iotaSerializeA _opt _ = Seq.singleton IBootstrapHalt
+
+keep1 :: Fragment (a ': as) '[a]
+keep1 =
+  Fragment $
+    anySeqLit
+      ( iotaFlocksReflection
+      , iotaFlocksGambit
+      , iotaDerivationDecomposition
+      , iotaBookkeepersGambit [True, False]
+      )
+
 popInst :: Fragment as (IotaString ': as)
 popInst =
   fragMuninnsReflection
-    +.+ fragUnsafeCast @'[IotaList IotaString]
+    +.+ fragUnsafeCast @'[IotaHList '[IotaList IotaString, IotaList IotaString]]
     +.+ fragSpeakersDecomposition
-    +.+ fragJestersGambit
+    +.+ fragSpeakersDecomposition
+    +.+ fragRotationGambitII
+    +.+ fragSpeakersDistillation
     +.+ fragHuginnsGambit
 
-embedParseNum :: Fragment as (IotaExec (IotaString : s) '[IotaNumber] : as)
-embedParseNum =
-  embedIntroRetro $ fragAsIota $ fragSehkmetsGambit @1 +.+ fragInputPurification
+embedAny :: (Typeable a, IotaCast a IotaAny) => Bool -> a -> Fragment s (a ': s)
+embedAny bootstrap a =
+  if bootstrap
+    then
+      Fragment $
+        anySeqLit
+          ( iotaIntrospection
+          , a
+          , iotaRetrospection
+          , iotaFlocksDisintegration
+          )
+    else embedConsideration a
 
-deserializePatternBootstrap
-  , deserializePattern
-  , deserializeMergeN
-  , deserializeString
-  , deserializeSuspend
-  , deserializeNumber
-  , deserializeVector
-  , deserializeExec
-  , deserializeReuse ::
-    IotaAny
+deserializePatternBootstrap :: IotaAnyList
 deserializePatternBootstrap =
-  iotaCast $
-    fragAsList $
-      embedParseNum
-        +.+ popInst
-        +.+ fragBlankReflection
-        +.+ fragSeparationDistillation
-        +.+ fragSpeakersDecomposition
-        +.+ fragBookkeepersGambit @'[False]
-        +.+ fragDerivationDecomposition
-        +.+ fragBookkeepersGambit @'[False]
-        +.+ fragThothsGambit @'[_, IotaExec '[IotaString] _]
-        +.+ fragChirographersPurification
+  fragAsList @'[] @'[IotaPattern] $
+    embedIntroRetro
+      ( fragAsIota @'[IotaString] @'[IotaNumber] $
+          fragInputPurification
+            +.+ keep1
+      )
+      +.+ popInst
+      +.+ fragBlankReflection
+      +.+ fragSeparationDistillation
+      +.+ fragSpeakersDecomposition
+      +.+ fragBookkeepersGambit @'[False]
+      +.+ fragDerivationDecomposition
+      +.+ fragBookkeepersGambit @'[False]
+      +.+ fragThothsGambit
+      +.+ fragCalligraphersPurification
+
+deserializePattern :: IotaAnyList
 deserializePattern =
-  iotaCast $
-    fragAsList $
-      fragEmpty
-        +.+ embedConsideration (IotaString $ T.pack strokeList)
-        +.+ embedConsideration (fragAsIota inner)
-        +.+ popInst
-        +.+ fragBlankReflection
-        +.+ fragSeparationDistillation
-        +.+ fragSpeakersDecomposition
-        +.+ fragBookkeepersGambit @'[False]
-        +.+ fragDerivationDecomposition
-        +.+ fragBookkeepersGambit @'[False]
-        +.+ fragThothsGambit
-        +.+ fragChirographersPurification
-        +.+ fragBookkeepersGambit @'[True, False]
+  fragAsList $
+    fragEmpty
+      +.+ embedConsideration (IotaString $ T.pack strokeList)
+      +.+ embedConsideration (fragAsIota inner)
+      +.+ popInst
+      +.+ fragBlankReflection
+      +.+ fragSeparationDistillation
+      +.+ fragSpeakersDecomposition
+      +.+ fragBookkeepersGambit @'[False]
+      +.+ fragDerivationDecomposition
+      +.+ fragBookkeepersGambit @'[False]
+      +.+ fragThothsGambit
+      +.+ fragCalligraphersPurification
+      +.+ fragBookkeepersGambit @'[True, False]
  where
   inner :: Fragment '[IotaString, IotaString] '[IotaNumber]
   inner =
     fragAssertStack
-      +.+ fragSehkmetsGambit @2
       +.+ fragLocatorsDistillation
+      +.+ keep1
       +.+ fragNumericalReflection 6
       -- 6, n
       +.+ fragDioscuriGambit
@@ -110,47 +152,60 @@ deserializePattern =
       +.+ fragAugursExaltation
       --
       +.+ fragFlocksDisintegration
+
+deserializeMergeN :: IotaAnyList
 deserializeMergeN =
-  iotaCast $
-    fragAsList $
-      popInst
-        +.+ fragInputPurification
-        +.+ fragSingleton iotaFlocksGambit
-deserializeString = iotaCast $ fragAsList $ popInst
+  fragAsList $
+    popInst
+      +.+ fragInputPurification
+      +.+ fragSingleton iotaFlocksGambit
+
+deserializeString :: IotaAnyList
+deserializeString = fragAsList $ popInst
+
+deserializeSuspend :: IotaAnyList
 deserializeSuspend =
-  iotaCast $
-    fragAsList $
-      embedIntroRetro (fragAsIota $ popInst +.+ fragJanusGambit)
-        +.+ fragIrisGambit
+  fragAsList $
+    embedIntroRetro
+      ( fragAsIota $
+          popInst
+            +.+ fragSingleton IotaHaltPlaceholder
+      )
+      +.+ fragIrisGambit
+
+deserializeNumber :: IotaAnyList
 deserializeNumber =
-  iotaCast $
-    fragAsList $
-      popInst
-        +.+ fragInputPurification
+  fragAsList $
+    popInst
+      +.+ fragInputPurification
+
+deserializeVector :: IotaAnyList
 deserializeVector =
-  iotaCast $
-    fragAsList $
-      embedParseNum
-        +.+ popInst
-        +.+ fragCommaReflection
-        +.+ fragSeparationDistillation
-        +.+ fragUnsafeCast @'[IotaHList '[IotaString, IotaString, IotaString]]
-        +.+ fragThothsGambit @'[_, IotaExec '[IotaString] _]
-        +.+ fragFlocksDisintegration
-        +.+ fragVectorExaltation
-deserializeExec = iotaCast iotaHermesGambit
+  fragAsList $
+    embedIntroRetro (fragAsIota $ keep1 +.+ fragInputPurification)
+      +.+ popInst
+      +.+ fragCommaReflection
+      +.+ fragSeparationDistillation
+      +.+ fragUnsafeCast @'[IotaHList '[IotaString, IotaString, IotaString]]
+      +.+ fragThothsGambit @'[_, IotaExec '[IotaString] _]
+      +.+ fragFlocksDisintegration
+      +.+ fragVectorExaltation
+
+deserializeExec :: IotaPattern
+deserializeExec = iotaHermesGambit
+
+deserializeReuse :: IotaAnyList
 deserializeReuse =
-  iotaCast $
-    fragAsList $
-      popInst
-        +.+ fragInputPurification
-        +.+ fragSingleton iotaFishermansGambitII
+  fragAsList $
+    popInst
+      +.+ fragInputPurification
+      +.+ fragSingleton iotaFishermansGambitII
 
-deserializeIntrinsic :: IotaPattern -> IotaAny
-deserializeIntrinsic iota = iotaCast $ fragAsList $ embedConsideration iota
+deserializeIntrinsic :: (Typeable a, IotaCast a IotaAny) => Bool -> a -> IotaAnyList
+deserializeIntrinsic bootstrap iota = fragAsList $ embedAny bootstrap iota
 
-serializeBootstrap0 :: IotaList IotaPattern -> Text
-serializeBootstrap0 (IotaList pats) = T.intercalate "," $ map inner $ toList pats
+serializeBootstrap0 :: Foldable t => t IotaPattern -> Text
+serializeBootstrap0 pats = T.intercalate "," $ map inner $ toList pats
  where
   inner (IotaPattern p) = foldMap T.show $ serializePattern p
 
@@ -171,129 +226,171 @@ bootstrap0 =
       +.+ fragBookkeepersGambit @'[False]
       +.+ fragDerivationDecomposition
       +.+ fragBookkeepersGambit @'[False]
-      +.+ embedIntroRetro (fragAsIota (fragInputPurification :: Fragment '[IotaString] '[IotaNumber]))
+      +.+ embedIntroRetro
+        ( fragAsIota @'[IotaString] @'[IotaNumber] $
+            fragInputPurification
+        )
       +.+ fragJestersGambit
       +.+ fragThothsGambit
-      +.+ fragChirographersPurification
+      +.+ fragCalligraphersPurification
 
-bootstrap1 :: Fragment '[IotaString] '[]
-bootstrap1 =
-  fragAssertStack @'[IotaString]
-    +.+ embedConsideration (iotaBookkeepersGambit [True]) -- semicolon placeholder
-    +.+ fragUnsafeCast @'[IotaString]
-    +.+ fragSeparationDistillation
+deserializeLoop :: Bool -> (forall s. Fragment s (IotaAnyList ': s)) -> Fragment '[IotaList IotaString] '[]
+deserializeLoop bootstrap embedInsts =
+  fragAssertStack
+    +.+ fragSinglesPurification
+    +.+ fragVacantReflection
+    +.+ fragSpeakersDistillation
     +.+ fragHuginnsGambit
-    +.+ embedIntroRetro (fragAsIota inner)
-    +.+ fragSisyphusGambit
-    +.+ fragVeryUnsafeCast
-    +.+ fragEmpty
+    +.+ embed (fragAsIota inner)
+    +.+ fragNumericalReflection injectIndex
+    +.+ fragProspectorsGambit
+    +.+ (fragSingleton iotaSurgeonsExaltation :: forall a b s. Fragment (a ': IotaNumber ': b ': s) (a ': s))
+    +.+ fragHermesGambit
+    +.+ fragSingleton (iotaBookkeepersGambit [False, False, False])
  where
-  embedInstDefs =
-    fragAssertStack
-      +.+ embedIntroRetro (fromJust @IotaAnyList $ iotaTryCast deserializePatternBootstrap)
-      +.+ embedIntroRetro (fromJust @IotaAnyList $ iotaTryCast deserializeMergeN)
-      +.+ embedIntroRetro (fromJust @IotaAnyList $ iotaTryCast deserializeString)
-      +.+ mergeTopN @3
-      +.+ fragCast @'[IotaAnyList]
+  injectIndex = 1 :: Int
+  placeholder :: Fragment s' (IotaAnyList ': s')
+  placeholder =
+    Fragment $
+      if bootstrap
+        then anySeqLit (iotaIntrospection, iotaBookkeepersGambit [True], iotaRetrospection, iotaFlocksDisintegration)
+        else anySeqLit (iotaConsideration, iotaBookkeepersGambit [True])
+  embed :: (EmbedIntroRetro a, IotaCast a IotaAny) => a -> Fragment s (a ': s)
+  embed = if bootstrap then embedIntroRetro else embedConsideration
+  ifElseCharon :: Bool -> Fragment a b -> Fragment (IotaBoolean ': a) b
+  ifElseCharon exitOn pat =
+    let pat' = case pat of
+          Fragment [iotaTryCast -> Just x] -> x
+          _ -> error "expected single pattern"
+     in if bootstrap
+          then
+            embedIntroRetro
+              ( if exitOn
+                  then iotaCharonsGambit `IotaHCons` pat' `IotaHCons` IotaHNil
+                  else pat' `IotaHCons` iotaCharonsGambit `IotaHCons` IotaHNil
+              )
+              +.+ fragFlocksDisintegration
+              +.+ fragAugursExaltation
+              +.+ fragSingleton iotaHermesGambit
+          else
+            ( if exitOn
+                then embedConsideration iotaCharonsGambit +.+ fragVacantReflection +.+ fragUnsafeCast @'[IotaPattern]
+                else fragVacantReflection +.+ fragUnsafeCast @'[IotaPattern] +.+ embedConsideration iotaCharonsGambit
+            )
+              +.+ fragAugursExaltation
+              +.+ fragUnsafeCast @'[IotaExecId _]
+              +.+ fragHermesGambit
+              +.+ pat
+  inner :: Fragment s' (IotaList IotaString ': IotaList IotaAnyList ': IotaAnyList ': s')
   inner =
-    fragAssertStack @'[]
-      +.+ embedInstDefs
-      +.+ popInst
-      +.+ fragGeminiDecomposition
-      +.+ fragAugursPurification
-      +.+ fragVacantReflection
-      +.+ fragUnsafeCast @'[IotaExecId '[IotaString, IotaAnyList]]
-      +.+ embedIntroRetro (fragAsIota $ fragBookkeepersGambit @'[False, False] +.+ fragJanusGambit)
-      +.+ fragAugursExaltation
-      +.+ fragHermesGambit
-      +.+ fragInputPurification
-      +.+ fragSelectionDistillation
-      +.+ fragUnsafeCast @'[IotaExec '[] '[]]
-      +.+ fragHermesGambit
-
-deserializer :: Fragment '[IotaString] '[]
-deserializer =
-  fragAssertStack @'[IotaString]
-    +.+ embedConsideration (iotaBookkeepersGambit [True]) -- semicolon placeholder
-    +.+ fragUnsafeCast @'[IotaString]
-    +.+ fragSeparationDistillation
-    +.+ fragHuginnsGambit
-    +.+ embedConsideration (fragAsIota $ inner)
-    +.+ embedConsideration (fragAsIota $ quineHelper)
-    +.+ fragGeminiDecomposition
-    +.+ fragSingleton iotaHermesGambit
- where
-  instDefs =
-    IotaList $
-      Seq.fromList
-        [ deserializePattern
-        , deserializeMergeN
-        , deserializeString
-        , deserializeSuspend
-        , deserializeNumber
-        , deserializeVector
-        , deserializeExec
-        , deserializeReuse
-        , deserializeIntrinsic iotaConsideration
-        , deserializeIntrinsic iotaIntrospection
-        , deserializeIntrinsic iotaRetrospection
-        ]
-  inner =
-    fragAssertStack @'[]
-      +.+ embedConsideration instDefs
-      +.+ popInst
-      +.+ fragGeminiDecomposition
-      +.+ fragAugursPurification
-      +.+ fragVacantReflection
-      +.+ fragUnsafeCast @'[IotaExecId '[IotaString, IotaAnyList]]
-      +.+ embedIntroRetro (fragAsIota $ fragBookkeepersGambit @'[False, False] +.+ fragJanusGambit)
-      +.+ fragAugursExaltation
-      +.+ fragHermesGambit
-      +.+ fragInputPurification
-      +.+ fragSelectionDistillation
-      +.+ fragUnsafeCast @'[IotaExec '[] '[]]
-      +.+ fragHermesGambit
-  quineHelper =
-    fragAssertStack @'[IotaAnyList, IotaAnyList]
-      +.+ fragProspectorsGambit
-      -- inner, quineHelper, inner
-      +.+ embedConsideration iotaConsideration
-      +.+ fragCast @'[IotaAny]
-      -- Consideration, inner, quineHelper, inner
-      +.+ fragUndertakersGambit
-      -- Consideration, inner, Consideration, quineHelper, inner
-      +.+ mergeTopN @4
-      +.+ fragRetrogradePurification
-      -- [Consideration, inner, Consideration, quineHelper], inner
-      +.+ fragUnsafeCast @'[IotaAnyList]
-      +.+ fragAdditiveDistillation
-      -- [*inner, Consideration, inner, Consideration, quineHelper]
-      +.+ embedIntroRetro
-        ( iotaCast $
-            IotaList $
-              Seq.fromList
-                [ iotaGeminiDecomposition
-                , iotaHermesGambit
-                ] ::
-            IotaAnyList
+    placeholder
+      +.+ embedInsts
+      +.+ fragUnsafeCast @'[IotaList IotaAnyList]
+      +.+ fragMuninnsReflection
+      +.+ fragUnsafeCast @'[IotaHList '[IotaList IotaString, IotaList IotaString]]
+      +.+ embed
+        ( fragAsIota $
+            fragAssertStack
+              +.+ fragSpeakersDecomposition
+              +.+ fragAugursPurification
+              +.+ ifElseCharon True (fragFlocksDisintegration)
+              --
+              +.+ fragGeminiDecomposition
+              +.+ fragAugursPurification
+              +.+ ifElseCharon False fragSpeakersDecomposition
+              +.+ embedAny bootstrap IotaSemiPlaceholder
+              +.+ fragUnsafeCast @'[IotaString]
+              +.+ fragSeparationDistillation
+              +.+ fragSinglesPurification
+              +.+ fragJestersGambit
+              +.+ fragIntegrationDistillation
+              +.+ fragHuginnsGambit
+              +.+ fragNullaryReflection
         )
-      +.+ fragAdditiveDistillation
-      +.+ fragUnsafeCast @'[IotaExec '[] '[]]
-      -- [*inner, Consideration, inner, Consideration, quineHelper, HermesGambit]
       +.+ fragHermesGambit
+      +.+ fragBookkeepersGambit @'[False]
+      +.+ embed
+        ( fragAsIota $
+            fragAssertStack
+              +.+ popInst
+              +.+ fragGeminiDecomposition
+              +.+ fragAugursPurification
+              +.+ ifElseCharon False fragInputPurification
+              +.+ fragSelectionDistillation
+              +.+ fragJestersGambit
+              +.+ fragNumericalReflection injectIndex
+              +.+ fragProspectorsGambit
+              +.+ (fragSingleton iotaSurgeonsExaltation :: forall a b s. Fragment (a ': IotaNumber ': b ': s) (a ': s))
+              +.+ fragAdditiveDistillation
+              +.+ fragSingleton iotaHermesGambit
+        )
+      +.+ fragHermesGambit
+
+bootstrap1 :: Fragment '[IotaList IotaString] '[]
+bootstrap1 =
+  deserializeLoop True $
+    fragAssertStack
+      +.+ embedIntroRetro (deserializePatternBootstrap)
+      +.+ embedIntroRetro (deserializeMergeN)
+      +.+ embedIntroRetro (deserializeString)
+      +.+ embedIntroRetro (deserializeIntrinsic True IotaSemiPlaceholder)
+      +.+ embedIntroRetro (deserializeIntrinsic True IotaHaltPlaceholder)
+      +.+ mergeTopN @5
+      +.+ fragCast @'[IotaAnyList]
+
+deserializer :: Fragment '[IotaList IotaString] '[]
+deserializer =
+  deserializeLoop False $
+    embedConsideration $
+      IotaList $
+        anySeqLit
+          ( deserializePattern
+          , deserializeMergeN
+          , deserializeString
+          , deserializeSuspend
+          , deserializeNumber
+          )
+          <> anySeqLit
+            ( deserializeVector
+            , deserializeExec
+            , deserializeReuse
+            , deserializeIntrinsic False iotaConsideration
+            , deserializeIntrinsic False iotaIntrospection
+            , deserializeIntrinsic False iotaRetrospection
+            )
 
 main :: IO ()
 main = do
   T.putStrLn "\n==== bootstrap0 ===="
   T.putStrLn $ iotaShow $ fragAsList bootstrap0
 
+  let IotaList (toList -> bootstrap1Iotas) =
+        fragAsList $
+          bootstrap1
+      bootstrap1Cast iota
+        | Just IotaHaltPlaceholder <- iotaTryCast iota = iotaBookkeepersGambit [True]
+        | Just IotaSemiPlaceholder <- iotaTryCast iota = iotaBookkeepersGambit [True]
+        | Just pat <- iotaTryCast iota = pat
+        | otherwise = error $ "invalid iota: " <> T.unpack (iotaShow iota)
+      isSemiPlaceholder iota
+        | Just IotaSemiPlaceholder <- iotaTryCast iota = True
+        | otherwise = False
+      isHaltPlaceholder iota
+        | Just IotaHaltPlaceholder <- iotaTryCast iota = True
+        | otherwise = False
+
   T.putStrLn "\n==== bootstrap1 ===="
-  T.putStrLn $
-    serializeBootstrap0 $
-      fromJust $
-        iotaTryCast $
-          fragAsList $
-            bootstrap1
+  mapM_ T.putStrLn $
+    T.chunksOf 250 $
+      serializeBootstrap0 $
+        map bootstrap1Cast bootstrap1Iotas
+
+  T.putStrLn "\n==== bootstrap1 semicolon placeholders ===="
+  print $
+    findIndices isSemiPlaceholder bootstrap1Iotas
+  T.putStrLn "\n==== bootstrap1 halt jump placeholders ===="
+  print $
+    findIndices isHaltPlaceholder bootstrap1Iotas
 
   T.putStrLn "\n==== deserializer ===="
   mapM_ T.putStrLn $

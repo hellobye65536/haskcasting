@@ -48,6 +48,9 @@ data Inst
   | IExec Int Int
   | INull
   | IBool Bool
+  --
+  | IBootstrapSemi
+  | IBootstrapHalt
   deriving (Eq)
 
 data VmInst
@@ -62,6 +65,9 @@ data VmInst
   | VmIntrinsicConsideration
   | VmIntrinsicIntrospection
   | VmIntrinsicRetrospection
+  --
+  | VmBootstrapSemi
+  | VmBootstrapHalt
 
 serializePattern :: Pattern -> [Int]
 serializePattern (Pattern dir ang) = NE.toList $ NE.reverse $ foldl' go (NE.singleton $ fromEnum dir) ang
@@ -99,6 +105,9 @@ simVmInst st = \case
   VmIntrinsicConsideration -> VmsPattern patConsideration : st
   VmIntrinsicIntrospection -> VmsPattern patIntrospection : st
   VmIntrinsicRetrospection -> VmsPattern patRetrospection : st
+  --
+  VmBootstrapSemi -> VmsUnknown : st
+  VmBootstrapHalt -> VmsUnknown : st
 
 convertInsts :: SerializeOptions -> [Inst] -> [VmInst]
 convertInsts opt = go [] . (if suspendHoist then hoistSuspends else id)
@@ -150,6 +159,10 @@ convertInsts opt = go [] . (if suspendHoist then hoistSuspends else id)
         ([VmMergeN n], is')
     | (IString s : is') <- is =
         ([VmString s], is')
+    | (IBootstrapSemi : is') <- is =
+        ([VmBootstrapSemi], is')
+    | (IBootstrapHalt : is') <- is =
+        ([VmBootstrapHalt], is')
     | [] <- is = error "empty instructions"
     | otherwise = error "instruction not supported in bootstrap mode"
 
@@ -169,6 +182,9 @@ serializeVmInst opt = \case
   VmIntrinsicConsideration -> "8"
   VmIntrinsicIntrospection -> "9"
   VmIntrinsicRetrospection -> "10"
+  --
+  VmBootstrapSemi -> "3"
+  VmBootstrapHalt -> "4"
  where
   bootstrap = serOptBootstrap opt
   patToStr = T.pack . map (strokeList !!) . (if bootstrap then id else groupStrokes) . serializePattern

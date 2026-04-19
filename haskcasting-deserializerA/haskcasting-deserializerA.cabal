@@ -22,8 +22,10 @@ executable main
     main-is:          Main.hs
     build-depends:
         haskcasting,
+        haskcasting-exprlang,
         haskcasting-hexcasting,
         haskcasting-moreiotas,
         haskcasting-hexical,
+        HList,
         text,
         containers,
