@@ -12,7 +12,7 @@ import Haskcasting.Pattern (pattern)
 $( mkIotaFragExpr
      "Enqueue"
      [pattern| EAST qeqwqwqwqwqeqaweqqqqqwweeweweewqdwwewewwewweweww |]
-     [[t|forall a bs. Fragment '[IotaExec '[] bs, IotaNumber, a] '[]|]]
+     [[t|forall a bs. Fragment '[a, IotaNumber, IotaExec '[] bs] '[]|]]
  )
 
 $( mkIotaFragExpr
