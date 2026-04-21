@@ -1,16 +1,28 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE MagicHash #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Haskcasting.Util (natValInt, HListLen, hListLen, AnySeq, AnySeqLit (anySeqLit)) where
+module Haskcasting.Util (
+  natValInt,
+  HListLen,
+  hListLen,
+  AnySeq,
+  AnySeqLit (anySeqLit),
+  IotaPlaceholder (IotaPlaceholder),
+  findFragPlaceholders,
+) where
 
 import Data.HList (HLength, HNat2Nat, Typeable)
 import Data.Kind (Type)
 import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
+import Data.Text (Text)
 import GHC.Exts (proxy#)
 import GHC.TypeNats (KnownNat, natVal')
-import Haskcasting.Iota (Iota, IotaAny, IotaCast (iotaCast))
+import Haskcasting.Fragment (Fragment, unwrapFragment)
+import Haskcasting.Iota (Iota (..), IotaAny, IotaCast (iotaCast), IotaTryCast (iotaTryCast))
+import Haskcasting.Serialize.A (Inst (IString))
 
 natValInt :: forall n. KnownNat n => Int
 natValInt = fromIntegral $ natVal' (proxy# @n)
@@ -88,3 +100,12 @@ instance
   AnySeqLit (a, b, c, d, e, f, g, h)
   where
   anySeqLit (a, b, c, d, e, f, g, h) = Seq.fromList [iotaCast a, iotaCast b, iotaCast c, iotaCast d, iotaCast e, iotaCast f, iotaCast g, iotaCast h]
+
+newtype IotaPlaceholder = IotaPlaceholder Text
+  deriving (Eq)
+instance Iota IotaPlaceholder where
+  iotaShow (IotaPlaceholder tag) = "<placeholder: " <> tag <> ">"
+  iotaSerializeA _opt _ = Seq.singleton (IString "")
+
+findFragPlaceholders :: Fragment a b -> Text -> [Int]
+findFragPlaceholders frag tag = Seq.findIndicesL ((== Just (IotaPlaceholder tag)) . iotaTryCast) $ unwrapFragment frag

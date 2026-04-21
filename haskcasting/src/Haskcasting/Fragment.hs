@@ -5,6 +5,7 @@
 
 module Haskcasting.Fragment (
   Fragment (..),
+  unwrapFragment,
   (+.+),
   fragAssertStack,
   fragEmpty,
@@ -23,6 +24,9 @@ import Haskcasting.Iota (IotaAny, IotaAnyList, IotaCast (iotaCast), IotaExec (Io
 
 data Fragment :: [Type] -> [Type] -> Type where
   Fragment :: Seq IotaAny -> Fragment a b
+
+unwrapFragment :: Fragment a b -> Seq IotaAny
+unwrapFragment (Fragment x) = x
 
 infixl 9 +.+
 (+.+) :: Fragment as bs -> Fragment bs cs -> Fragment as cs

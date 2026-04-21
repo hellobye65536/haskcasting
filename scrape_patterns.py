@@ -76,7 +76,7 @@ def make_types(tys: list[str]) -> list[list[str]]:
         case []:
             return [[]]
         case [ty, *tys]:
-            rs = [make_type(t) for t in ty.split("/")]
+            rs = [make_type(t.strip()) for t in re.split(r"[/|]", ty)]
             nrs = make_types(tys)
             return [[r, *nr] for r in rs for nr in nrs]
         case _:

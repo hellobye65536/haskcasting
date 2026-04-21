@@ -111,7 +111,7 @@ instance Iota IotaGreatPattern where
     (SA.SerializeOptions {serOptGreatSpells = gps})
     iota@(IotaGreatPattern tag _pat) = Seq.singleton $ case HM.lookup tag gps of
       Just gp -> SA.IPattern gp
-      Nothing -> SA.ISuspend $ iotaShow iota
+      Nothing -> SA.ISuspend tag
 
 newtype IotaExec as bs where
   IotaExec :: forall (as :: [Type]) (bs :: [Type]). IotaAnyList -> IotaExec as bs

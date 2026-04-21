@@ -13,15 +13,18 @@ module Haskcasting.Compound.Hexcasting (
   fishDup,
   lehmerCodeMaxLen,
   lehmerCode,
+  keep1,
 ) where
 
 import Control.Monad (foldM, guard)
 import Data.List (elemIndex)
+import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.Sequence qualified as Seq
 import GHC.Exts (proxy#)
 import GHC.TypeNats (KnownNat, natVal', type (-))
 import Haskcasting.Fragment (Fragment (Fragment))
 import Haskcasting.Iota (IotaCast (iotaCast), IotaHList)
+import Haskcasting.Util (anySeqLit)
 
 import Haskcasting.Patterns.Hexcasting
 
@@ -103,3 +106,13 @@ lehmerCode ps = do
             ret' = ret + i * fac
         pure $ (ret', elems')
   fmap fst $ foldM step (0, elems_) $ reverse $ zip ps facs
+
+keep1 :: Fragment (a ': as) '[a]
+keep1 =
+  Fragment $
+    anySeqLit
+      ( iotaFlocksReflection
+      , iotaFlocksGambit
+      , iotaDerivationDecomposition
+      , iotaBookkeepersGambit $ True :| [False]
+      )

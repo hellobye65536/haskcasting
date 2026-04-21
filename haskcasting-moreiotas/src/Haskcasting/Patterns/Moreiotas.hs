@@ -75,7 +75,7 @@ $( mkIotaFragExpr
 $( mkIotaFragExpr
      "ScrivenersPurification"
      [pattern| EAST wawqwawaw |]
-     [[t|Fragment '[IotaAny] '[IotaString]|]]
+     [[t|forall a. Fragment '[a] '[IotaString]|]]
  )
 
 $( mkIotaFragExpr
