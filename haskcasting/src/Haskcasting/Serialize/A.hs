@@ -6,8 +6,8 @@ module Haskcasting.Serialize.A (
   SerializeOptions (..),
   defaultSerializeOptions,
   Inst (..),
-  serializePattern,
-  strokeList,
+  patternToStrokes,
+  strokeChars,
   serialize,
 ) where
 
@@ -20,22 +20,23 @@ import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Sequence (Seq)
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Vector.Unboxed qualified as VU
 import Haskcasting.Pattern (Pattern (Pattern), pattern)
 
 data SerializeOptions = SerializeOptions
-  { serOptGreatSpells :: HashMap Text Pattern
-  , serOptBootstrap :: Bool
-  , serOptMaxLineLength :: Int
-  , serOptSuspendHoisting :: Bool
+  { soGreatSpells :: HashMap Text Pattern
+  , soBootstrap :: Bool
+  , soMaxLineLength :: Int
+  , soSuspendHoisting :: Bool
   }
 
 defaultSerializeOptions :: SerializeOptions
 defaultSerializeOptions =
   SerializeOptions
-    { serOptGreatSpells = HM.empty
-    , serOptBootstrap = False
-    , serOptMaxLineLength = 250
-    , serOptSuspendHoisting = False
+    { soGreatSpells = HM.empty
+    , soBootstrap = False
+    , soMaxLineLength = 250
+    , soSuspendHoisting = False
     }
 
 data Inst
@@ -48,8 +49,8 @@ data Inst
   | IExec Int Int
   | INull
   | IBool Bool
-  --
-  | IBootstrapSemi
+  | --
+    IBootstrapSemi
   | IBootstrapHalt
   deriving (Eq)
 
@@ -65,12 +66,12 @@ data VmInst
   | VmIntrinsicConsideration
   | VmIntrinsicIntrospection
   | VmIntrinsicRetrospection
-  --
-  | VmBootstrapSemi
+  | --
+    VmBootstrapSemi
   | VmBootstrapHalt
 
-serializePattern :: Pattern -> [Int]
-serializePattern (Pattern dir ang) = NE.toList $ NE.reverse $ foldl' go (NE.singleton $ fromEnum dir) ang
+patternToStrokes :: Pattern -> [Int]
+patternToStrokes (Pattern dir ang) = NE.toList $ NE.reverse $ foldl' go (NE.singleton $ fromEnum dir) ang
  where
   go ls@(d NE.:| _) a = (fromEnum d + fromEnum a) `rem` 6 NE.<| ls
 
@@ -89,6 +90,7 @@ intrinsicPatterns =
 data VmStackElem
   = VmsPattern Pattern
   | VmsSuspend Text
+  | VmsString Text
   | VmsUnknown
   deriving (Eq)
 
@@ -96,7 +98,7 @@ simVmInst :: [VmStackElem] -> VmInst -> [VmStackElem]
 simVmInst st = \case
   VmPattern pat -> VmsPattern pat : st
   VmMergeN n -> VmsUnknown : drop n st
-  VmString _s -> VmsUnknown : st
+  VmString s -> VmsString s : st
   VmSuspend tag -> VmsSuspend tag : st
   VmNumber _n -> VmsUnknown : st
   VmVector _x _y _z -> VmsUnknown : st
@@ -112,8 +114,8 @@ simVmInst st = \case
 convertInsts :: SerializeOptions -> [Inst] -> [VmInst]
 convertInsts opt = go [] . (if suspendHoist then hoistSuspends else id)
  where
-  bootstrap = serOptBootstrap opt
-  suspendHoist = serOptSuspendHoisting opt
+  bootstrap = soBootstrap opt
+  suspendHoist = soSuspendHoisting opt
   hoistSuspends is = suspends <> is
    where
     suspends =
@@ -166,8 +168,8 @@ convertInsts opt = go [] . (if suspendHoist then hoistSuspends else id)
     | [] <- is = error "empty instructions"
     | otherwise = error "instruction not supported in bootstrap mode"
 
-strokeList :: [Char]
-strokeList = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdef"
+strokeChars :: VU.Vector Char
+strokeChars = VU.fromList "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdef"
 
 serializeVmInst :: SerializeOptions -> VmInst -> Text
 serializeVmInst opt = \case
@@ -186,8 +188,8 @@ serializeVmInst opt = \case
   VmBootstrapSemi -> "3"
   VmBootstrapHalt -> "4"
  where
-  bootstrap = serOptBootstrap opt
-  patToStr = T.pack . map (strokeList !!) . (if bootstrap then id else groupStrokes) . serializePattern
+  bootstrap = soBootstrap opt
+  patToStr = T.pack . map (strokeChars VU.!) . (if bootstrap then id else groupStrokes) . patternToStrokes
   groupStrokes [] = []
   groupStrokes [a] = [a]
   groupStrokes (a : b : as) = (6 + a + 6 * b) : groupStrokes as
@@ -209,4 +211,4 @@ serialize opt = reverse . foldl' go [] . map (serializeVmInst opt) . convertInst
      in if T.length out' > maxLength
           then s : allouts
           else out' : outs
-  maxLength = serOptMaxLineLength opt
+  maxLength = soMaxLineLength opt
