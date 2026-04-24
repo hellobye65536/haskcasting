@@ -6,36 +6,37 @@ module Haskcasting.Serialize.A (
   SerializeOptions (..),
   defaultSerializeOptions,
   Inst (..),
-  serializePattern,
-  strokeList,
+  patternToStrokes,
+  strokeChars,
   serialize,
 ) where
 
 import Data.Foldable (toList)
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HM
-import Data.List (elemIndex, sort, (!?))
+import Data.List (sort, elemIndex)
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Maybe (mapMaybe)
 import Data.Sequence (Seq)
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Vector.Unboxed qualified as VU
 import Haskcasting.Pattern (Pattern (Pattern), pattern)
 
 data SerializeOptions = SerializeOptions
-  { serOptGreatSpells :: HashMap Text Pattern
-  , serOptBootstrap :: Bool
-  , serOptMaxLineLength :: Int
-  , serOptSuspendHoisting :: Bool
+  { soGreatSpells :: HashMap Text Pattern
+  , soBootstrap :: Bool
+  , soMaxLineLength :: Int
+  , soSuspendHoisting :: Bool
   }
 
 defaultSerializeOptions :: SerializeOptions
 defaultSerializeOptions =
   SerializeOptions
-    { serOptGreatSpells = HM.empty
-    , serOptBootstrap = False
-    , serOptMaxLineLength = 250
-    , serOptSuspendHoisting = False
+    { soGreatSpells = HM.empty
+    , soBootstrap = False
+    , soMaxLineLength = 250
+    , soSuspendHoisting = False
     }
 
 data Inst
@@ -48,10 +49,12 @@ data Inst
   | IExec Int Int
   | INull
   | IBool Bool
-  --
-  | IBootstrapSemi
+  | -- abstract instructions
+    ITagAsSuspend Text
+  | -- bootstrap instructions
+    IBootstrapSemi
   | IBootstrapHalt
-  deriving (Eq)
+  deriving (Eq, Show)
 
 data VmInst
   = VmPattern Pattern
@@ -65,12 +68,12 @@ data VmInst
   | VmIntrinsicConsideration
   | VmIntrinsicIntrospection
   | VmIntrinsicRetrospection
-  --
-  | VmBootstrapSemi
+  | -- bootstrap instructions
+    VmBootstrapSemi
   | VmBootstrapHalt
 
-serializePattern :: Pattern -> [Int]
-serializePattern (Pattern dir ang) = NE.toList $ NE.reverse $ foldl' go (NE.singleton $ fromEnum dir) ang
+patternToStrokes :: Pattern -> [Int]
+patternToStrokes (Pattern dir ang) = NE.toList $ NE.reverse $ foldl' go (NE.singleton $ fromEnum dir) ang
  where
   go ls@(d NE.:| _) a = (fromEnum d + fromEnum a) `rem` 6 NE.<| ls
 
@@ -89,31 +92,15 @@ intrinsicPatterns =
 data VmStackElem
   = VmsPattern Pattern
   | VmsSuspend Text
+  | VmsString Text
   | VmsUnknown
   deriving (Eq)
-
-simVmInst :: [VmStackElem] -> VmInst -> [VmStackElem]
-simVmInst st = \case
-  VmPattern pat -> VmsPattern pat : st
-  VmMergeN n -> VmsUnknown : drop n st
-  VmString _s -> VmsUnknown : st
-  VmSuspend tag -> VmsSuspend tag : st
-  VmNumber _n -> VmsUnknown : st
-  VmVector _x _y _z -> VmsUnknown : st
-  VmExec i o -> replicate o VmsUnknown <> drop (i + 1) st
-  VmReuse n -> fromMaybe VmsUnknown (st !? n) : st
-  VmIntrinsicConsideration -> VmsPattern patConsideration : st
-  VmIntrinsicIntrospection -> VmsPattern patIntrospection : st
-  VmIntrinsicRetrospection -> VmsPattern patRetrospection : st
-  --
-  VmBootstrapSemi -> VmsUnknown : st
-  VmBootstrapHalt -> VmsUnknown : st
 
 convertInsts :: SerializeOptions -> [Inst] -> [VmInst]
 convertInsts opt = go [] . (if suspendHoist then hoistSuspends else id)
  where
-  bootstrap = serOptBootstrap opt
-  suspendHoist = serOptSuspendHoisting opt
+  bootstrap = soBootstrap opt
+  suspendHoist = soSuspendHoisting opt
   hoistSuspends is = suspends <> is
    where
     suspends =
@@ -122,52 +109,69 @@ convertInsts opt = go [] . (if suspendHoist then hoistSuspends else id)
         . sort
         . mapMaybe (\case ISuspend tag -> Just tag; _ -> Nothing)
         $ is
+  lower = if bootstrap then lowerInstBootstrap else lowerInstReuse
   go _stack [] = []
-  go stack is = let (vis, is') = inner stack is in vis <> go (foldl' simVmInst stack vis) is'
-  inner = if bootstrap then innerBootstrap else innerNormal
-  innerNormal stack is
-    -- intrinsic patterns
-    | (IPattern pat : is') <- is
-    , Just vmInst <- lookup pat intrinsicPatterns =
-        ([vmInst], is')
-    -- stack reuse
-    | (IPattern pat : is') <- is
-    , Just sti <- elemIndex (VmsPattern pat) stack =
-        ([VmReuse sti], is')
-    | (ISuspend tag : is') <- is
-    , Just sti <- elemIndex (VmsSuspend tag) stack =
-        ([VmReuse sti], is')
-    --
-    | (ISuspend tag : is') <- is =
-        ([VmSuspend tag], is')
-    | (INumber n : is') <- is =
-        ([VmNumber n], is')
-    | (IVector x y z : is') <- is =
-        ([VmVector x y z], is')
-    | (IExec i o : is') <- is =
-        ([VmExec i o], is')
-    | (INull : is') <- is =
-        ([VmPattern [pattern| EAST d |], VmExec 0 1], is')
-    | (IBool b : is') <- is =
-        let p = if b then [pattern| SOUTH_EAST aqae |] else [pattern| NORTH_EAST dedq |]
-         in ([VmPattern p, VmExec 0 1], is')
-    | otherwise = innerBootstrap stack is
-  innerBootstrap _stack is
-    | (IPattern pat : is') <- is =
-        ([VmPattern pat], is')
-    | (IMergeN n : is') <- is =
-        ([VmMergeN n], is')
-    | (IString s : is') <- is =
-        ([VmString s], is')
-    | (IBootstrapSemi : is') <- is =
-        ([VmBootstrapSemi], is')
-    | (IBootstrapHalt : is') <- is =
-        ([VmBootstrapHalt], is')
-    | [] <- is = error "empty instructions"
-    | otherwise = error "instruction not supported in bootstrap mode"
+  go stack (i : is) =
+    let vmis = lower stack i
+     in vmis <> go (simInst stack i) is
 
-strokeList :: [Char]
-strokeList = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdef"
+simInst :: [VmStackElem] -> Inst -> [VmStackElem]
+simInst st = \case
+  IPattern pat -> VmsPattern pat : st
+  IMergeN n -> VmsUnknown : drop n st
+  IString s -> VmsString s : st
+  ISuspend tag -> VmsSuspend tag : st
+  INumber _n -> VmsUnknown : st
+  IVector _x _y _z -> VmsUnknown : st
+  IExec i o -> replicate o VmsUnknown <> drop (i + 1) st
+  INull -> VmsUnknown : st
+  IBool _b -> VmsUnknown : st
+  -- abstract instructions
+  ITagAsSuspend tag -> VmsSuspend tag : drop 1 st
+  -- bootstrap instructions
+  IBootstrapSemi -> VmsUnknown : st
+  IBootstrapHalt -> VmsUnknown : st
+
+lowerInstReuse, lowerInst, lowerInstBootstrap :: [VmStackElem] -> Inst -> [VmInst]
+lowerInstReuse stack = \case
+  ISuspend tag
+    | Just sti <- elemIndex (VmsSuspend tag) stack ->
+        [VmReuse sti]
+  IPattern pat@(Pattern _ang dir)
+    | Just sti <- elemIndex (VmsPattern pat) stack
+    , length (show sti) < ((length dir + 1) `quot` 2) ->
+        [VmReuse sti]
+  IString str
+    | Just sti <- elemIndex (VmsString str) stack
+    , length (show sti) < T.length str ->
+        [VmReuse sti]
+  i -> lowerInst stack i
+lowerInst stack = \case
+  -- intrinsic iotas
+  IPattern pat | Just vmInst <- lookup pat intrinsicPatterns -> [vmInst]
+  --
+  ISuspend tag -> [VmSuspend tag]
+  INumber n -> [VmNumber n]
+  IVector x y z -> [VmVector x y z]
+  IExec i o -> [VmExec i o]
+  INull -> [VmPattern [pattern| EAST d |], VmExec 0 1]
+  IBool b ->
+    let p = if b then [pattern| SOUTH_EAST aqae |] else [pattern| NORTH_EAST dedq |]
+     in [VmPattern p, VmExec 0 1]
+  i -> lowerInstBootstrap stack i
+lowerInstBootstrap _stack = \case
+  IPattern pat -> [VmPattern pat]
+  IMergeN n -> [VmMergeN n]
+  IString s -> [VmString s]
+  IBootstrapSemi -> [VmBootstrapSemi]
+  IBootstrapHalt -> [VmBootstrapHalt]
+  --
+  ITagAsSuspend _tag -> []
+  --
+  i -> error $ "instruction '" <> show i <> "' not supported during bootstrap"
+
+strokeChars :: VU.Vector Char
+strokeChars = VU.fromList "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdef"
 
 serializeVmInst :: SerializeOptions -> VmInst -> Text
 serializeVmInst opt = \case
@@ -186,8 +190,8 @@ serializeVmInst opt = \case
   VmBootstrapSemi -> "3"
   VmBootstrapHalt -> "4"
  where
-  bootstrap = serOptBootstrap opt
-  patToStr = T.pack . map (strokeList !!) . (if bootstrap then id else groupStrokes) . serializePattern
+  bootstrap = soBootstrap opt
+  patToStr = T.pack . map (strokeChars VU.!) . (if bootstrap then id else groupStrokes) . patternToStrokes
   groupStrokes [] = []
   groupStrokes [a] = [a]
   groupStrokes (a : b : as) = (6 + a + 6 * b) : groupStrokes as
@@ -209,4 +213,4 @@ serialize opt = reverse . foldl' go [] . map (serializeVmInst opt) . convertInst
      in if T.length out' > maxLength
           then s : allouts
           else out' : outs
-  maxLength = serOptMaxLineLength opt
+  maxLength = soMaxLineLength opt
