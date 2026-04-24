@@ -293,7 +293,7 @@ deserializeLoop bootstrap embedInsts =
             fragAssertStack
               +.+ fragSpeakersDecomposition
               +.+ fragAugursPurification
-              +.+ ifElseCharon True (fragFlocksDisintegration)
+              +.+ ifElseCharon True fragFlocksDisintegration
               --
               +.+ fragGeminiDecomposition
               +.+ fragAugursPurification
