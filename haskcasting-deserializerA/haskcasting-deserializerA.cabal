@@ -26,6 +26,7 @@ executable main
         haskcasting-hexcasting,
         haskcasting-moreiotas,
         haskcasting-hexical,
-        HList,
         text,
+        vector,
         containers,
+        HList,

@@ -12,6 +12,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Data.Typeable (Typeable)
+import Data.Vector.Unboxed qualified as VU
 import Haskcasting.Embed (
   EmbedIntroRetro,
   embedConsideration,
@@ -26,11 +27,11 @@ import Haskcasting.Iota.Moreiotas (IotaString (IotaString))
 import Haskcasting.Serialize (serializeA)
 import Haskcasting.Serialize.A (
   Inst (IBootstrapHalt, IBootstrapSemi),
-  SerializeOptions (..),
   defaultSerializeOptions,
-  serializePattern,
-  strokeList,
+  patternToStrokes,
+  strokeChars,
  )
+import Haskcasting.Serialize.A qualified as SA
 import Haskcasting.Util (AnySeqLit (anySeqLit))
 
 import Haskcasting.Compound.Hexcasting (mergeTopN)
@@ -103,7 +104,7 @@ deserializePattern :: IotaAnyList
 deserializePattern =
   fragAsList $
     fragEmpty
-      +.+ embedConsideration (IotaString $ T.pack strokeList)
+      +.+ embedConsideration (IotaString $ T.pack $ VU.toList strokeChars)
       +.+ embedConsideration (fragAsIota inner)
       +.+ popInst
       +.+ fragBlankReflection
@@ -207,7 +208,7 @@ deserializeIntrinsic bootstrap iota = fragAsList $ embedAny bootstrap iota
 serializeBootstrap0 :: Foldable t => t IotaPattern -> Text
 serializeBootstrap0 pats = T.intercalate "," $ map inner $ toList pats
  where
-  inner (IotaPattern p) = foldMap T.show $ serializePattern p
+  inner (IotaPattern p) = foldMap T.show $ patternToStrokes p
 
 bootstrap0 :: Fragment '[IotaString] '[IotaList IotaPattern]
 bootstrap0 =
@@ -394,6 +395,6 @@ main = do
 
   T.putStrLn "\n==== deserializer ===="
   mapM_ T.putStrLn $
-    serializeA defaultSerializeOptions {serOptBootstrap = True} $
+    serializeA defaultSerializeOptions {SA.soBootstrap = True} $
       fragAsIota $
         deserializer
