@@ -11,6 +11,7 @@ module Haskcasting.Util (
   AnySeqLit (anySeqLit),
   IotaPlaceholder (IotaPlaceholder),
   findFragPlaceholders,
+  findFragPlaceholder,
 ) where
 
 import Data.HList (HLength, HNat2Nat, Typeable)
@@ -109,3 +110,8 @@ instance Iota IotaPlaceholder where
 
 findFragPlaceholders :: Fragment a b -> Text -> [Int]
 findFragPlaceholders frag tag = Seq.findIndicesL ((== Just (IotaPlaceholder tag)) . iotaTryCast) $ unwrapFragment frag
+
+findFragPlaceholder :: Fragment a b -> Text -> Int
+findFragPlaceholder frag tag = case findFragPlaceholders frag tag of
+  [ind] -> ind
+  _ -> error "expected placeholder exactly once"

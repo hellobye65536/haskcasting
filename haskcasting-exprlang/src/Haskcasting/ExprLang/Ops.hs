@@ -72,7 +72,7 @@ permTrim :: Perm -> Perm
 permTrim (Perm depth perm) = go depth (VU.length perm - 1)
  where
   maxs = VU.scanl max (-1) perm
-  go _ (-1) = Perm 0 []
+  go d (-1) = Perm d []
   go d i =
     let p = perm VU.! i
         m = maxs VU.! i

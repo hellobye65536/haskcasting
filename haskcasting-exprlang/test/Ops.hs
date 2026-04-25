@@ -42,6 +42,14 @@ main = hspec $ do
     prop "permTrim identity should be empty" $ \(n :: Int) ->
       permTrim (permExtend n PermEmpty) `shouldBe` Perm 0 []
 
+    prop "permTrim drop should be same" $ \(Positive d :: Positive Int) ->
+      permTrim (Perm d []) `shouldBe` Perm d []
+
+    prop "permExtend (permTrim perm) `shouldBe` perm" $ \(perm :: Perm) ->
+      let Perm d p = perm
+          Perm d' p' = permTrim perm
+       in permExtend (d - d') (Perm d' p') `shouldBe` Perm d p
+
   describe "permExtend" $ do
     prop "permTrim (permExtend perm) `shouldBe` permTrim perm" $ \(p :: Perm, n :: Int) ->
       permTrim (permExtend n p) `shouldBe` permTrim p

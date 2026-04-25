@@ -1,21 +1,27 @@
-module Haskcasting.ExprLang.Macros ((%+), (%==), (%/=), (%<), exprList) where
+module Haskcasting.ExprLang.Macros ((%#), (%+), (%==), (%/=), (%<), (%>), (%!), exprList, mergeList) where
 
-import Data.HList (HAppendListR)
+import Data.HList (HAppendListR, HReverse)
 import Haskcasting.ExprLang (Expr, (%:))
 import Haskcasting.ExprLang qualified as E
 import Haskcasting.ExprLang.Core (Expr (Expr, unwrapExpr), RawExpr (Call, Merge))
-import Haskcasting.Iota (Iota, IotaList)
+import Haskcasting.Iota (Iota, IotaHList, IotaList, IotaNumber)
 import Haskcasting.Patterns.Hexcasting (
   ExprAdditiveDistillation (exprAdditiveDistillation),
   ExprEqualityDistillation (exprEqualityDistillation),
   ExprInequalityDistillation (exprInequalityDistillation),
   ExprMaximusDistillation (exprMaximusDistillation),
+  ExprMinimusDistillation (exprMinimusDistillation),
+  ExprSelectionDistillation (exprSelectionDistillation),
   ExprSinglesPurification (exprSinglesPurification),
+  exprNumericalReflection,
   exprVacantReflection,
   iotaFlocksGambit,
   iotaNumericalReflection,
  )
-import Haskcasting.Util (AnySeqLit (anySeqLit))
+import Haskcasting.Util (AnySeqLit (anySeqLit), HListLen, hListLen)
+
+(%#) :: Int -> Expr blk '[IotaNumber]
+(%#) n = exprNumericalReflection n
 
 infixr 5 %+
 (%+) :: ExprAdditiveDistillation (HAppendListR a b) bs => Expr blk a -> Expr blk b -> Expr blk bs
@@ -33,9 +39,20 @@ infix 4 %<
 (%<) :: ExprMaximusDistillation (HAppendListR a b) bs => Expr blk a -> Expr blk b -> Expr blk bs
 l %< r = exprMaximusDistillation $ l %: r
 
+infix 4 %>
+(%>) :: ExprMinimusDistillation (HAppendListR a b) bs => Expr blk a -> Expr blk b -> Expr blk bs
+l %> r = exprMinimusDistillation $ l %: r
+
+infixl 9 %!
+(%!) :: ExprSelectionDistillation (HAppendListR a b) bs => Expr blk a -> Expr blk b -> Expr blk bs
+l %! r = exprSelectionDistillation $ l %: r
+
 exprList :: forall a blk. Iota a => [Expr blk '[a]] -> Expr blk '[IotaList a]
 exprList [] = E.cast exprVacantReflection
 exprList [a] = E.unsafeCast $ exprSinglesPurification a
 exprList as =
   let inner = foldl1 (flip Merge) $ map unwrapExpr as
    in Expr $ Call (anySeqLit (iotaNumericalReflection $ length as, iotaFlocksGambit)) inner 1
+
+mergeList :: forall xs rxs blk. (HListLen xs, HReverse xs rxs) => Expr blk xs -> Expr blk '[IotaHList rxs]
+mergeList = E.callUnsafe $ anySeqLit (iotaNumericalReflection $ hListLen @xs, iotaFlocksGambit)

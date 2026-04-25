@@ -51,3 +51,13 @@ test-suite ops
         hspec,
         QuickCheck,
         haskcasting-exprlang,
+
+test-suite sample-progs
+    import:
+        common,
+        build-depends,
+    type:             exitcode-stdio-1.0
+    hs-source-dirs:   test
+    main-is:          SampleProgs.hs
+    build-depends:
+        haskcasting-exprlang,

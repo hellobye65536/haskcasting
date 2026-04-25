@@ -30,7 +30,7 @@ import Haskcasting.Iota (
   IotaNull,
   IotaNumber,
   IotaPattern (IotaPattern),
-  IotaVector,
+  IotaVector, IotaAnyList,
  )
 import Haskcasting.Pattern (Angle, Pattern (Pattern), angleParse, angles, pattern)
 import Haskcasting.Util (HListLen)
@@ -907,6 +907,9 @@ fragThothsGambitSingle = fragThothsGambit
 -- | More strictly typed version for better type deduction
 fragThothsGambitHList :: Fragment (IotaHList as ': IotaExec (a ': s) a' ': s) (IotaHList (FragThothsGambitHList a a' as) ': s)
 fragThothsGambitHList = fragThothsGambit
+
+fragThothsGambitAny :: Fragment (IotaAnyList ': IotaExec (IotaAny ': s) a' ': s) (IotaAnyList ': s)
+fragThothsGambitAny = fragSingleton iotaThothsGambit
 
 iotaCharonsGambit :: IotaPattern
 iotaCharonsGambit = IotaPattern [pattern| SOUTH_WEST aqdee |]
