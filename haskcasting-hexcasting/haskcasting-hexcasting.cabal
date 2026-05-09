@@ -11,18 +11,12 @@ author:             hellobye65536
 maintainer:         boshwang1234@gmail.com
 
 common common
-    hs-source-dirs:   src
     default-language: GHC2024
     build-depends:    base ^>= 4.20
     ghc-options:
         -Wall
 
-library
-    import:           common
-    hs-source-dirs:   src
-    exposed-modules:
-        Haskcasting.Patterns.Hexcasting
-        Haskcasting.Compound.Hexcasting
+common build-depends
     build-depends:
         haskcasting,
         haskcasting-exprlang-core,
@@ -31,3 +25,12 @@ library
         file-embed,
         bytestring,
         HList,
+
+library
+    import:
+        common,
+        build-depends,
+    hs-source-dirs:   src
+    exposed-modules:
+        Haskcasting.Patterns.Hexcasting
+        Haskcasting.Compound.Hexcasting
