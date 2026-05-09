@@ -10,11 +10,13 @@ import Haskcasting.ExprLang.Ops (
   decomposePerm,
   decomposePermBookkeepers,
   permBookkeepers,
+  permDeepen,
   permExtend,
   permFish,
   permTrim,
+  permUndeepen,
  )
-import Test.Hspec (describe, hspec, shouldBe)
+import Test.Hspec (describe, hspec, it, shouldBe)
 import Test.Hspec.QuickCheck (prop)
 import Test.QuickCheck (Arbitrary (..), NonNegative (NonNegative), Positive (Positive), chooseInt, sized)
 
@@ -36,6 +38,11 @@ instance Arbitrary Perm where
 main :: IO ()
 main = hspec $ do
   describe "permTrim" $ do
+    it "permTrim samples" $ do
+      permTrim (Perm 0 []) `shouldBe` Perm 0 []
+      permTrim (Perm 1 [0]) `shouldBe` Perm 0 []
+      permTrim (Perm 1 [0, 0]) `shouldBe` Perm 1 [0, 0]
+
     prop "permTrim is idempotent" $ \(p :: Perm) ->
       permTrim (permTrim p) `shouldBe` permTrim p
 
@@ -54,6 +61,18 @@ main = hspec $ do
     prop "permTrim (permExtend perm) `shouldBe` permTrim perm" $ \(p :: Perm, n :: Int) ->
       permTrim (permExtend n p) `shouldBe` permTrim p
 
+  describe "permUndeepen" $ do
+    it "permUndeepen samples" $ do
+      permUndeepen (Perm 0 []) `shouldBe` (0, Perm 0 [])
+      permUndeepen (Perm 1 [0]) `shouldBe` (1, Perm 0 [])
+      permUndeepen (Perm 1 [0, 0]) `shouldBe` (0, Perm 1 [0, 0])
+      permUndeepen (Perm 2 [0, 1]) `shouldBe` (2, Perm 0 [])
+      permUndeepen (Perm 3 [0, 1, 1]) `shouldBe` (1, Perm 2 [0, 0])
+
+    prop "permDeepen . permUndeepen should be identity" $ \(p :: Perm) ->
+      let (n, p') = permUndeepen p
+       in permTrim (permDeepen n p') `shouldBe` permTrim p
+
   describe "Monoid Perm" $ do
     prop "perm <> identity `shouldBe` perm" $ \(p :: Perm, n :: Int) ->
       let ident = permExtend n PermEmpty
@@ -67,6 +86,10 @@ main = hspec $ do
     prop "decomposePermBookkeepers is correct" $ \(p :: Perm) ->
       let (keep, p') = decomposePermBookkeepers p
        in permTrim (permBookkeepers keep <> p') `shouldBe` permTrim p
+
+    it "decomposePerm samples" $ do
+      decomposePerm (Perm 0 []) `shouldBe` ([], [])
+      decomposePerm (Perm 4 [1, 0, 2]) `shouldBe` ([True, True, True, False], [Fish 1])
 
     prop "decomposePerm is correct" $ \(p :: Perm) ->
       let (keep, fishes) = decomposePerm p

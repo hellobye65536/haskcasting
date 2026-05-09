@@ -66,7 +66,7 @@ import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
 import Data.Vector.Unboxed.Mutable qualified as VUM
 
-import Haskcasting.Embed (EmbedIntroRetro, iotaConsideration)
+import Haskcasting.Embed (EmbedIntroRetro, iotaConsideration, iotaIntrospection, iotaRetrospection)
 import Haskcasting.Embed qualified as Embed
 import Haskcasting.ExprLang.Core
 import Haskcasting.ExprLang.Ops (
@@ -417,12 +417,17 @@ lowerBlockT ::
   m AnySeq
 lowerBlockT opts caps args _rets blk = do
   (ret, blockState) <- flip runStateT blockStateDefault $ unwrapExprBlockT $ do
-    let capsInsts =
+    let capsPlaceholder =
+          if boUseIntroRetro opts
+            then anySeqLit (iotaIntrospection, iotaBookkeepersGambit [True], iotaRetrospection, iotaFlocksDisintegration)
+            else anySeqLit (iotaConsideration, iotaBookkeepersGambit [True])
+        capsInsts =
           case caps of
             0 -> Seq.empty
-            1 -> anySeqLit (iotaConsideration, iotaBookkeepersGambit [True])
-            _ -> anySeqLit (iotaConsideration, iotaBookkeepersGambit [True], iotaFlocksDisintegration)
-    bsPushBinding (Intro capsInsts $ args + caps, args + caps)
+            1 -> capsPlaceholder
+            _ -> capsPlaceholder <> anySeqLit iotaFlocksDisintegration
+    bsPushBinding (Intro Seq.empty args, args)
+    bsPushBinding (Intro capsInsts caps, caps)
     blk
   let ops = lowerBlockState blockState ret
   pure $ flip runReader opts $ lowerOps =<< optimizeOps ops

@@ -1,3 +1,4 @@
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE PatternSynonyms #-}
@@ -8,6 +9,7 @@ module Haskcasting.ExprLang.Ops (
   permTrim,
   permExtend,
   permDeepen,
+  permUndeepen,
   permBookkeepers,
   decomposePermBookkeepers,
   Fish (..),
@@ -17,6 +19,8 @@ module Haskcasting.ExprLang.Ops (
   FuncOp (..),
   Op (..),
   optimizeOps,
+  OptM,
+  OptT,
   optimizePerm,
   lowerOps,
 ) where
@@ -24,12 +28,7 @@ module Haskcasting.ExprLang.Ops (
 import Control.Monad (foldM_, forM, forM_, replicateM, void)
 import Control.Monad.Except (runExceptT, throwError)
 import Control.Monad.Identity (Identity (Identity))
-import Control.Monad.Reader (
-  Reader,
-  ReaderT (ReaderT),
-  ask,
-  runReaderT,
- )
+import Control.Monad.Reader (Reader, ReaderT (ReaderT), ask, runReaderT)
 import Control.Monad.ST (ST, runST)
 import Data.Bool (bool)
 import Data.Foldable (Foldable (toList), fold)
@@ -38,7 +37,7 @@ import Data.Functor (($>))
 import Data.List.Index (iall, iforM_, indexed)
 import Data.List.NonEmpty qualified as NE
 import Data.STRef (newSTRef, readSTRef, writeSTRef)
-import Data.Sequence (Seq)
+import Data.Sequence (Seq ((:<|), (:|>)))
 import Data.Sequence qualified as Seq
 import Data.Vector.Strict qualified as V
 import Data.Vector.Strict.Mutable qualified as VM
@@ -69,16 +68,17 @@ instance Monoid Perm where
   mempty = PermEmpty
 
 permTrim :: Perm -> Perm
-permTrim (Perm depth perm) = go depth (VU.length perm - 1)
+permTrim (Perm depth perm) = Perm (depth - dropN) (VU.take (pl - dropN) perm)
  where
-  maxs = VU.scanl max (-1) perm
-  go d (-1) = Perm d []
-  go d i =
-    let p = perm VU.! i
+  pl = VU.length perm
+  maxs = VU.prescanl' max (-1) perm
+  -- perm = [0,1,0] -> maxs = [-1,0,1]
+  dropN = foldr const pl $ dropWhile go [0 .. pl - 1]
+  go d =
+    let i = pl - d - 1
+        p = perm VU.! i
         m = maxs VU.! i
-     in if p > m && p == d - 1
-          then go (d - 1) (i - 1)
-          else Perm d $ VU.take (i + 1) perm
+     in p > m && p == depth - d - 1
 
 permExtend :: Int -> Perm -> Perm
 permExtend n (Perm d p) =
@@ -91,6 +91,18 @@ permDeepen n (Perm d p) =
   if n <= 0
     then Perm d p
     else Perm (d + n) (VU.generate n id <> VU.map (+ n) p)
+
+permUndeepen :: Perm -> (Int, Perm)
+permUndeepen (Perm depth perm) = (dropN, Perm (depth - dropN) (VU.map (subtract dropN) $ VU.drop dropN perm))
+ where
+  pl = VU.length perm
+  mins = VU.prescanr' min depth perm
+  -- perm = [1,0,1] -> mins = [0,1,depth]
+  dropN = foldr const pl $ dropWhile go [0 .. pl - 1]
+  go d =
+    let p = perm VU.! d
+        m = mins VU.! d
+     in p < m && p == d
 
 permBookkeepers :: [Bool] -> Perm
 permBookkeepers keep = Perm (length keep) (VU.fromList $ map snd $ filter fst $ zip keep [0 ..])
@@ -131,7 +143,7 @@ permFish (FishDup i_) =
 decomposePerm :: Perm -> ([Bool], [Fish])
 decomposePerm p_ = if VU.null p then (keep, []) else (keep, fishes)
  where
-  (keep, Perm d p) = decomposePermBookkeepers p_
+  (keep, (permTrim -> Perm d p)) = decomposePermBookkeepers p_
   vumTakeEnd n v = VUM.drop (VUM.length v - n) v
   vuTakeEnd n v = VU.drop (VU.length v - n) v
   vuDropEnd n v = VU.take (VU.length v - n) v
@@ -218,7 +230,7 @@ infixr 6 <<>>
 (<<>>) = liftA2 (<>)
 
 optimizeOps :: Seq Op -> OptM (Seq Op)
-optimizeOps = mapM optimizePermOp . groupOps
+optimizeOps = mapM optimizePermOp . ungroupOps . groupOps
 
 groupOps :: Seq Op -> Seq Op
 groupOps = shiftRight 0 PermEmpty Seq.empty . shiftLeft 0 PermEmpty Seq.empty
@@ -229,31 +241,93 @@ groupOps = shiftRight 0 PermEmpty Seq.empty . shiftLeft 0 PermEmpty Seq.empty
   -- shift stack ops left/right
   shiftLeft off perm funcs = \case
     Seq.Empty -> opsPerm perm <> funcs
-    (OpStack op) Seq.:<| ops ->
+    OpStack op :<| ops ->
       let op' = permDeepen off $ opToPerm op
        in shiftLeft off (perm <> op') funcs ops
-    op@(OpFunc (FuncOp _ off' 0)) Seq.:<| ops ->
-      shiftLeft (off + off') perm (funcs Seq.:|> op) ops
-    op@(OpFunc _) Seq.:<| ops ->
+    op@(OpFunc (FuncOp _ off' 0)) :<| ops ->
+      shiftLeft (off + off') perm (funcs :|> op) ops
+    op@(OpFunc _) :<| ops ->
       opsPerm perm
         <> funcs
         <> [op]
         <> shiftLeft 0 PermEmpty Seq.empty ops
   shiftRight off perm funcs = \case
     Seq.Empty -> funcs <> opsPerm perm
-    ops Seq.:|> (OpStack op) ->
+    ops :|> OpStack op ->
       let op' = permDeepen off $ opToPerm op
        in shiftRight off (op' <> perm) funcs ops
-    ops Seq.:|> op@(OpFunc (FuncOp _ 0 off')) ->
-      shiftRight (off + off') perm (op Seq.:<| funcs) ops
-    ops Seq.:|> op@(OpFunc _) ->
+    ops :|> op@(OpFunc (FuncOp _ 0 off')) ->
+      shiftRight (off + off') perm (op :<| funcs) ops
+    ops :|> op@(OpFunc _) ->
       shiftRight 0 PermEmpty Seq.empty ops
         <> [op]
         <> funcs
         <> opsPerm perm
 
+infixl 5 `MaybeOpFuncR`
+pattern MaybeOpFuncR :: Seq Op -> Maybe FuncOp -> Seq Op
+pattern xs `MaybeOpFuncR` x <- (matchOpFuncR -> (xs, x))
+  where
+    xs `MaybeOpFuncR` Nothing = xs
+    xs `MaybeOpFuncR` Just x = xs :|> OpFunc x
+matchOpFuncR :: Seq Op -> (Seq Op, Maybe FuncOp)
+matchOpFuncR = \case
+  ops :|> OpFunc x -> (ops, Just x)
+  ops -> (ops, Nothing)
+
+infixr 5 `MaybeOpFuncL`
+pattern MaybeOpFuncL :: Maybe FuncOp -> Seq Op -> Seq Op
+pattern x `MaybeOpFuncL` xs <- (matchOpFuncL -> (x, xs))
+  where
+    Nothing `MaybeOpFuncL` xs = xs
+    Just x `MaybeOpFuncL` xs = OpFunc x :<| xs
+matchOpFuncL :: Seq Op -> (Maybe FuncOp, Seq Op)
+matchOpFuncL = \case
+  OpFunc x :<| ops -> (Just x, ops)
+  ops -> (Nothing, ops)
+
+ungroupOps :: Seq Op -> Seq Op
+ungroupOps = eagerUngroupLeft . eagerUngroupRight
+ where
+  eagerUngroupLeft = \case
+    ops :|> OpFunc lo :|> OpStack (opToPerm -> perm) `MaybeOpFuncR` ro -> maybeShift ops lo perm ro
+    ops :|> OpStack (opToPerm -> l) :|> OpStack (opToPerm -> r) `MaybeOpFuncR` ro ->
+      eagerUngroupLeft (ops :|> OpStack (OpPerm $ l <> r) `MaybeOpFuncR` ro)
+    ops :|> op -> eagerUngroupLeft ops :|> op
+    Seq.Empty -> Seq.Empty
+   where
+    maybeShift ops lo perm ro =
+      let (depth, perm') = permUndeepen perm
+          (lDiff, lMinD) = case lo of
+            FuncOp _ l r | r >= l -> (r - l, r)
+            _ -> (0, depth + 1)
+          (rDiff, rMinD) = case ro of
+            Just (FuncOp _ l r) | l >= r -> (l - r, l)
+            _ -> (0, depth + 1)
+       in if depth >= lMinD && (not $ depth >= rMinD && rDiff > lDiff)
+            then eagerUngroupLeft (ops :|> OpStack (OpPerm $ permDeepen (depth - lDiff) perm') :|> OpFunc lo) `MaybeOpFuncR` ro
+            else eagerUngroupLeft (ops :|> OpFunc lo) :|> OpStack (OpPerm perm) `MaybeOpFuncR` ro
+  eagerUngroupRight = \case
+    lo `MaybeOpFuncL` OpStack (opToPerm -> perm) :<| OpFunc ro :<| ops -> maybeShift ops lo perm ro
+    lo `MaybeOpFuncL` OpStack (opToPerm -> l) :<| OpStack (opToPerm -> r) :<| ops ->
+      eagerUngroupRight (lo `MaybeOpFuncL` OpStack (OpPerm $ l <> r) :<| ops)
+    op :<| ops -> op :<| eagerUngroupRight ops
+    Seq.Empty -> Seq.Empty
+   where
+    maybeShift ops lo perm ro =
+      let (depth, perm') = permUndeepen perm
+          (lDiff, lMinD) = case lo of
+            Just (FuncOp _ l r) | r >= l -> (r - l, r)
+            _ -> (0, depth + 1)
+          (rDiff, rMinD) = case ro of
+            FuncOp _ l r | l >= r -> (l - r, l)
+            _ -> (0, depth + 1)
+       in if depth >= rMinD && (not $ depth >= lMinD && lDiff > rDiff)
+            then lo `MaybeOpFuncL` eagerUngroupRight (OpFunc ro :<| OpStack (OpPerm $ permDeepen (depth - rDiff) perm') :<| ops)
+            else lo `MaybeOpFuncL` OpStack (OpPerm perm) :<| eagerUngroupRight (OpFunc ro :<| ops)
+
 data Cost = Cost !Int !Int
-  deriving (Eq, Ord)
+  deriving (Eq, Ord, Show)
 
 instance Semigroup Cost where
   Cost la lb <> Cost ra rb = Cost (la + ra) (lb + rb)
@@ -340,13 +414,13 @@ peepholes = [consecutive, swindlers]
             case lehmerCode $ VU.toList p of
               Nothing -> pure ()
               Just code ->
-                addEdge (u, v) $
-                  pathCostLit
-                    ( iotaConsideration
-                    , IotaNumber $ fromIntegral code
-                    , iotaSwindlersGambit
-                    )
-                    (Cost 3 2)
+                addEdge (u, v)
+                  =<< pathEmbedInt code
+                    <<>> pure
+                      ( pathCostLit
+                          (iotaSwindlersGambit)
+                          (Cost 1 1)
+                      )
             pure perm'
       _ -> pure ()
 
