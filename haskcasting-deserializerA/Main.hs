@@ -34,7 +34,7 @@ import Haskcasting.Serialize.A (
 import Haskcasting.Serialize.A qualified as SA
 import Haskcasting.Util (AnySeqLit (anySeqLit))
 
-import Haskcasting.Compound.Hexcasting (mergeTopN)
+import Haskcasting.Compound.Hexcasting (mergeTopN, keep1)
 import Haskcasting.Patterns.Hexcasting
 import Haskcasting.Patterns.Hexical
 import Haskcasting.Patterns.Moreiotas
@@ -48,16 +48,6 @@ data IotaHaltPlaceholder = IotaHaltPlaceholder
 instance Iota IotaHaltPlaceholder where
   iotaShow _ = "<halt placeholder>"
   iotaSerializeA _opt _ = Seq.singleton IBootstrapHalt
-
-keep1 :: Fragment (a ': as) '[a]
-keep1 =
-  Fragment $
-    anySeqLit
-      ( iotaFlocksReflection
-      , iotaFlocksGambit
-      , iotaDerivationDecomposition
-      , iotaBookkeepersGambit [True, False]
-      )
 
 popInst :: Fragment as (IotaString ': as)
 popInst =
