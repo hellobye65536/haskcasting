@@ -119,6 +119,15 @@ for section in soup.main("section", recursive=False):  # pyright: ignore[reportO
             if data is None:
                 continue
 
+            # Extract the description paragraph that follows </details>
+            details = pattern.parent("details")[0]  # pyright: ignore[reportOptionalCall]
+            desc_p = details.find_next_sibling("p")
+            docstring = ""
+            if desc_p:
+                doc_text = desc_p.get_text().strip()
+                if doc_text:
+                    docstring = doc_text
+
             ident_name = "".join(c for c in pattern_name if c.isalpha())
             direction = cast(str, data["data-start"]).upper()
             angles = cast(str, data["data-string"])
@@ -160,8 +169,12 @@ for section in soup.main("section", recursive=False):  # pyright: ignore[reportO
                     types_list = f"""[ {sep.join(tys)}
                      ]"""
 
+            # Escape the docstring for Haskell comment (handle special chars)
+            escaped_doc = docstring.replace("'", "\\'")
+
             print(
                 textwrap.dedent(f"""\
+                -- {escaped_doc}
                 $( mk{"Great" if great_spell else ""}IotaFragExpr
                      "{ident_name}"{great_name}
                      [pattern| {direction} {angles} |]
