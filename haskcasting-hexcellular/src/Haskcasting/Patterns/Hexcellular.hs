@@ -11,7 +11,7 @@ import Haskcasting.Iota.Hexcellular (IotaProperty (..))
 import Haskcasting.Pattern (pattern)
 
 $( mkIotaFragExpr
-     "SchrödingersReflection"
+     "SchrodingersReflection"
      [pattern| SOUTH_WEST aawe |]
      [[t|Fragment '[] '[IotaProperty]|]]
  )
@@ -23,13 +23,13 @@ $( mkIotaFragExpr
  )
 
 $( mkIotaFragExpr
-     "SchrödingersGambit"
+     "SchrodingersGambit"
      [pattern| SOUTH_WEST aawq |]
      [[t|forall a. Fragment '[a, IotaProperty] '[]|]]
  )
 
 $( mkIotaFragExpr
-     "SchrödingersPurification"
+     "SchrodingersPurification"
      [pattern| SOUTH_WEST aawa |]
      [[t|Fragment '[IotaProperty] '[IotaProperty]|]]
  )
