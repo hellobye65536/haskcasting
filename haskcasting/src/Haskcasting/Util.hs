@@ -10,6 +10,8 @@ module Haskcasting.Util (
   AnySeq,
   AnySeqLit (anySeqLit),
   IotaPlaceholder (IotaPlaceholder),
+  findListPlaceholders,
+  findListPlaceholder,
   findFragPlaceholders,
   findFragPlaceholder,
 ) where
@@ -22,7 +24,12 @@ import Data.Text (Text)
 import GHC.Exts (proxy#)
 import GHC.TypeNats (KnownNat, natVal')
 import Haskcasting.Fragment (Fragment, unwrapFragment)
-import Haskcasting.Iota (Iota (..), IotaAny, IotaCast (iotaCast), IotaTryCast (iotaTryCast))
+import Haskcasting.Iota (
+  Iota (..),
+  IotaAny,
+  iotaCast,
+  iotaTryCast,
+ )
 import Haskcasting.Serialize.A (Inst (IString))
 
 natValInt :: forall n. KnownNat n => Int
@@ -108,10 +115,16 @@ instance Iota IotaPlaceholder where
   iotaShow (IotaPlaceholder tag) = "<placeholder: " <> tag <> ">"
   iotaSerializeA _opt _ = Seq.singleton (IString "")
 
-findFragPlaceholders :: Fragment a b -> Text -> [Int]
-findFragPlaceholders frag tag = Seq.findIndicesL ((== Just (IotaPlaceholder tag)) . iotaTryCast) $ unwrapFragment frag
+findListPlaceholders :: AnySeq -> Text -> [Int]
+findListPlaceholders xs tag = Seq.findIndicesL ((== Just (IotaPlaceholder tag)) . iotaTryCast) xs
 
-findFragPlaceholder :: Fragment a b -> Text -> Int
-findFragPlaceholder frag tag = case findFragPlaceholders frag tag of
+findListPlaceholder :: AnySeq -> Text -> Int
+findListPlaceholder xs tag = case findListPlaceholders xs tag of
   [ind] -> ind
   _ -> error "expected placeholder exactly once"
+
+findFragPlaceholders :: Fragment a b -> Text -> [Int]
+findFragPlaceholders frag tag = findListPlaceholders (unwrapFragment frag) tag
+
+findFragPlaceholder :: Fragment a b -> Text -> Int
+findFragPlaceholder frag tag = findListPlaceholder (unwrapFragment frag) tag
