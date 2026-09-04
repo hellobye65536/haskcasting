@@ -4,11 +4,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Haskcasting.Patterns.Overevaluate where
 
 import Data.Sequence qualified as Seq
-import GHC.TypeNats (KnownNat)
+import GHC.TypeNats (KnownNat, Nat, type (-))
 
 import Haskcasting.ExprLang.TH (mkIotaFragExpr)
 import Haskcasting.Fragment (Fragment (Fragment), fragSingleton)
@@ -209,7 +211,12 @@ $( mkIotaFragExpr
 iotaSekhmetsGambit :: Int -> IotaPattern
 iotaSekhmetsGambit n = IotaPattern $ Pattern DirectionSE ([angles| qaqdd |] <> take n (cycle [angles| qe |]))
 
-fragSekhmetsGambit :: forall n as. KnownNat n => Fragment as as
+type family TakeN (n :: Nat) (s :: [k]) :: [k] where
+  TakeN 0 _ = '[]
+  TakeN _ '[] = '[]
+  TakeN n (x ': xs) = x ': TakeN (n - 1) xs
+
+fragSekhmetsGambit :: forall n as. KnownNat n => Fragment as (TakeN n as)
 fragSekhmetsGambit =
   Fragment $ Seq.singleton (iotaCast (iotaSekhmetsGambit (natValInt @n)))
 
