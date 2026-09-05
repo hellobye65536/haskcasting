@@ -25,6 +25,6 @@ library
     build-depends:
         haskcasting,
         haskcasting-exprlang-core,
-        haskcasting-moreiotas,
+        haskcasting-hexpose,
         text,
         containers,

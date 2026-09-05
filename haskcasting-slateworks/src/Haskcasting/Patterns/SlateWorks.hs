@@ -17,7 +17,7 @@ import Haskcasting.Iota (
   IotaPattern (IotaPattern),
   IotaVector,
  )
-import Haskcasting.Iota.Moreiotas (IotaItemStack)
+import Haskcasting.Iota.Hexpose (IotaItem)
 import Haskcasting.Pattern (pattern)
 
 -- This takes a number between 0 and 5 (inclusive), and sets the held slot of the bound Pocket Simulator. Free.
@@ -32,7 +32,7 @@ $( mkIotaFragExpr
 $( mkIotaFragExpr
      "ListItems"
      [pattern| SOUTH_WEST eaqwqaeqawawaedd |]
-     [[t|'[] -> '[IotaList IotaItemStack]|]]
+     [[t|'[] -> '[IotaList IotaItem]|]]
      -- [''] -> ['[item stack]']
  )
 
@@ -89,7 +89,7 @@ $( mkIotaFragExpr
 iotaReawakenItem :: IotaPattern
 iotaReawakenItem = IotaPattern [pattern| SOUTH_WEST eaqwqaeqwqqwqwwqwqqweqwaweadwawwwawdaewawq |]
 
-fragReawakenItem :: Fragment (IotaExec (IotaItemStack ': s) (IotaBoolean ': IotaVector ': IotaNumber ': s') ': s) s
+fragReawakenItem :: Fragment (IotaExec (IotaItem ': s) (IotaBoolean ': IotaVector ': IotaNumber ': s') ': s) s
 fragReawakenItem = fragSingleton iotaReawakenItem
 
 -- Check Item functions much like Reawaken Item; however, it only requires a Boolean from the inputted Hex. If the Boolean is ever True, the spell ends, and returns True.
@@ -97,8 +97,8 @@ fragReawakenItem = fragSingleton iotaReawakenItem
 iotaCheckItem :: IotaPattern
 iotaCheckItem = IotaPattern [pattern| SOUTH_WEST eaqwqaeqqddqeeqddq |]
 
-fragCheckItem :: Fragment (IotaExec (IotaItemStack ': s) (IotaBoolean ': s') ': s) (IotaBoolean ': s)
-fragCheckItem = fragSingleton iotaReawakenItem
+fragCheckItem :: Fragment (IotaExec (IotaItem ': s) (IotaBoolean ': s') ': s) (IotaBoolean ': s)
+fragCheckItem = fragSingleton iotaCheckItem
 
 -- In some rare scenarios, Vessels can get jumbled up and have items of the same type spread across different  Vessels. This is a neat spell to resort them at a cost. That cost being 5 Charged Amethyst.
 $( mkIotaFragExpr
