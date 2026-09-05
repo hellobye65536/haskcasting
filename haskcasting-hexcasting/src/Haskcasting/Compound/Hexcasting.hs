@@ -14,6 +14,7 @@ module Haskcasting.Compound.Hexcasting (
   lehmerCodeMaxLen,
   lehmerCode,
   keep1,
+  debugReveal,
 ) where
 
 import Control.Monad (foldM, guard)
@@ -90,6 +91,16 @@ fishDup =
       [ iotaCast $ iotaNumericalReflection $ natValInt @n
       , iotaCast $ iotaFishermansGambitII
       ]
+
+debugReveal :: Fragment s s
+debugReveal =
+  Fragment $
+    anySeqLit
+      ( iotaFlocksReflection
+      , iotaFlocksGambit
+      , iotaReveal
+      , iotaFlocksDisintegration
+      )
 
 lehmerCodeMaxLen :: Int
 lehmerCodeMaxLen = 12
