@@ -11,7 +11,7 @@ import Data.Text qualified as T
 
 import Haskcasting.ExprLang.TH (mkFragExprInstance)
 import Haskcasting.Fragment (Fragment)
-import Haskcasting.Iota (Iota (..), IotaList (IotaList), IotaNumber (IotaNumber))
+import Haskcasting.Iota (Iota (..), IotaList (IotaList), IotaNumber (IotaNumber), IotaVector)
 import Haskcasting.Pattern (pattern)
 import Haskcasting.Serialize.A qualified as SA
 
@@ -90,7 +90,9 @@ $( mkFragExprInstance
 
 $( mkFragExprInstance
      "MultiplicativeDistillation"
-     [[t|Fragment '[IotaMatrix, IotaMatrix] '[IotaMatrix]|]]
+     [ [t|Fragment '[IotaMatrix, IotaMatrix] '[IotaMatrix]|]
+     , [t|Fragment '[IotaVector, IotaMatrix] '[IotaMatrix]|]
+     ]
  )
 
 $( mkFragExprInstance
