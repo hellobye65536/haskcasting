@@ -34,7 +34,7 @@ import Haskcasting.Serialize.A (
 import Haskcasting.Serialize.A qualified as SA
 import Haskcasting.Util (AnySeqLit (anySeqLit))
 
-import Haskcasting.Compound.Hexcasting (mergeTopN, keep1)
+import Haskcasting.Compound.Hexcasting (keep1, mergeTopN)
 import Haskcasting.Patterns.Hexcasting
 import Haskcasting.Patterns.Hexical
 import Haskcasting.Patterns.Moreiotas
@@ -182,8 +182,8 @@ deserializeVector =
       +.+ fragFlocksDisintegration
       +.+ fragVectorExaltation
 
-deserializeExec :: IotaPattern
-deserializeExec = iotaHermesGambit
+deserializeExec :: IotaAnyList
+deserializeExec = IotaList $ anySeqLit iotaHermesGambit
 
 deserializeReuse :: IotaAnyList
 deserializeReuse =
